@@ -1,0 +1,13 @@
+server:
+  port: 8002
+
+spring:
+  application:
+    name: producer
+  profiles:
+    active: dev
+
+krest:
+  mq:
+    host: localhost
+    port: 9001
