@@ -3,13 +3,12 @@ package com.krest.consumer.mq;
 import com.krest.mq.starter.anno.KrestConsumer;
 import com.krest.mq.starter.anno.KrestMQListener;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 @KrestConsumer
-@Slf4j
 public class MQListener {
 
     @KrestMQListener(queue = "demo")
