@@ -1,20 +1,18 @@
 package com.krest.mq.core.server;
 
-import com.krest.mq.core.entity.MQEntity;
-import com.krest.mq.core.entity.ModuleType;
-import com.krest.mq.core.entity.MsgStatus;
+import com.google.protobuf.ProtocolStringList;
+import com.krest.mq.core.entity.MQMessage;
+import com.krest.mq.core.utils.DateUtils;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import lombok.extern.slf4j.Slf4j;
 
-
 import java.util.*;
 
 @Slf4j
-@ChannelHandler.Sharable
-public class MqServerHandler extends ChannelInboundHandlerAdapter {
+public class MqServerHandler extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
 
     boolean isPushMode = false;
 
@@ -25,7 +23,7 @@ public class MqServerHandler extends ChannelInboundHandlerAdapter {
         this.isPushMode = isPushMode;
     }
 
-    static Map<String, Queue<MQEntity>> queueMap = new HashMap<>();
+    static Map<String, Queue<MQMessage.MQEntity>> queueMap = new HashMap<>();
 
     static Map<String, Channel> ctxMap = new HashMap<>();
 
@@ -33,24 +31,23 @@ public class MqServerHandler extends ChannelInboundHandlerAdapter {
 
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        MQEntity msgEntity = (MQEntity) msg;
-        Set<String> queueNames = msgEntity.getQueueName();
-        if (queueNames.isEmpty()) {
+    protected void channelRead0(ChannelHandlerContext ctx, MQMessage.MQEntity request) throws Exception {
+        ProtocolStringList queueList = request.getToQueueList();
+        if (queueList.isEmpty()) {
             log.error("can not find queue info");
-            log.error(msgEntity.toString());
             return;
         } else {
             // 根据不同的类型处理消息
-            System.out.println("服务端获取消息：" + msgEntity.toString());
-            ModuleType moduleType = msgEntity.getModuleType();
-
-            switch (moduleType) {
-                case CONSUMER:
-                    consumer(ctx, msgEntity);
+            System.out.println("服务端获取消息：" + request.toString());
+            int msgType = request.getMsgType();
+            switch (msgType) {
+                // 0 代表消费者
+                case 0:
+                    consumer(ctx, request);
                     break;
-                case PRODUCER:
-                    producer(ctx, msgEntity);
+                // 1 代表生产则
+                case 1:
+                    producer(ctx, request);
                     break;
                 default:
                     log.error("unknown module type");
@@ -65,48 +62,47 @@ public class MqServerHandler extends ChannelInboundHandlerAdapter {
      * 2. 给生产者返回响应的确认标记
      * 3. 获取对应消费者的ctx，然后推送消息，但是需要判断ctx是否存活状态
      */
-    private void producer(ChannelHandlerContext ctx, MQEntity msgEntity) throws InterruptedException {
+    private void producer(ChannelHandlerContext ctx, MQMessage.MQEntity request) throws InterruptedException {
         // 回复生产者
-        MQEntity result = new MQEntity();
-        switch (msgEntity.getMsgStatus()) {
-            case PRODUCER_CONNECT_SERVER:
-                result.setMsgStatus(MsgStatus.PRODUCER_CONNECT_SERVER_SUCCESS);
-                break;
-            default:
-                result.setMsgStatus(MsgStatus.SEND_TO_SERVER_SUCCESS);
-                break;
+        if (request.getIsAck()) {
+            MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
+            MQMessage.MQEntity response = builder.setId(request.getId())
+                    .setAck(true)
+                    .setDateTime(DateUtils.getNowDate())
+                    .build();
+            System.out.println("返回确认消息");
+            System.out.println(response);
+            ctx.writeAndFlush(response);
         }
-        ctx.writeAndFlush(result);
 
         // 整理消息一次放入到每个消息队列中
-        Set<String> queueNames = msgEntity.getQueueName();
-        for (String queueName : queueNames) {
-            Queue<MQEntity> queue = queueMap.get(queueName);
-            if (queue == null) {
-                queue = new LinkedList<>();
-                queueMap.put(queueName, queue);
-            }
-            // 重置 msg entity 的信息
-            msgEntity.setQueueName(null);
-            msgEntity.setQueue(queueName);
-            msgEntity.setMsgStatus(MsgStatus.STAY_IN_SERVER);
-            queue.offer(msgEntity);
-
-            // 发送消息
-            Channel channel = ctxMap.get(queueName);
-            if (channel != null) {
-                if (isPushMode) {
-                    while (!queue.isEmpty()) {
-                        MQEntity curMqEntity = queue.poll();
-                        curMqEntity.setMsgCount(queue.size());
-                        curMqEntity.setMsgStatus(MsgStatus.SEND_TO_CONSUMER);
-                        channel.writeAndFlush(curMqEntity);
+        ProtocolStringList queueNames = request.getToQueueList();
+        if (!queueNames.isEmpty()) {
+            for (String queueName : queueNames) {
+                Queue<MQMessage.MQEntity> queue = queueMap.get(queueName);
+                if (queue == null) {
+                    queue = new LinkedList<>();
+                    queueMap.put(queueName, queue);
+                }
+                // 重置 msg entity 的信息
+                MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
+                MQMessage.MQEntity response = builder.setId(request.getId())
+                        .setMsg(request.getMsg())
+                        .setAck(true)
+                        .setDateTime(DateUtils.getNowDate())
+                        .setFromQueue(queueName)
+                        .build();
+                queue.offer(response);
+                // 发送消息
+                Channel channel = ctxMap.get(queueName);
+                if (channel != null) {
+                    if (isPushMode) {
+                        while (!queue.isEmpty()) {
+                            channel.writeAndFlush(queue.poll());
+                        }
+                    } else {
+                        channel.writeAndFlush(queue.poll());
                     }
-                } else {
-                    MQEntity curMqEntity = queue.poll();
-                    curMqEntity.setMsgCount(queue.size());
-                    curMqEntity.setMsgStatus(MsgStatus.SEND_TO_CONSUMER);
-                    channel.writeAndFlush(curMqEntity);
                 }
             }
         }
@@ -117,39 +113,38 @@ public class MqServerHandler extends ChannelInboundHandlerAdapter {
      * 2. server 返回建立链接的信息
      * 3. 如果是推送机制，那么我们就需要主动推送信息
      */
-    private void consumer(ChannelHandlerContext ctx, MQEntity msgEntity) {
+    private void consumer(ChannelHandlerContext ctx, MQMessage.MQEntity request) {
         // 返回确认信息
-        MQEntity mqEntity = new MQEntity();
-        if (msgEntity.getMsgStatus().equals(MsgStatus.CONSUMER_CONNECT_SERVER)) {
-            mqEntity.setMsgStatus(MsgStatus.CONSUMER_CONNECT_SERVER_SUCCESS);
-        } else {
-            msgEntity.setMsgStatus(MsgStatus.SEND_TO_CONSUMER);
+        if (request.getIsAck()) {
+            MQMessage.MQEntity.Builder response = MQMessage.MQEntity.newBuilder();
+            response.setId(request.getId())
+                    .setAck(true)
+                    .setDateTime(DateUtils.getNowDate())
+                    .build();
+            ctx.writeAndFlush(response);
         }
-        ctx.writeAndFlush(mqEntity);
 
         // 第一步 如果不存在队列就创建
-        Set<String> queueNames = msgEntity.getQueueName();
-        for (String queueName : queueNames) {
-            // 设置 ctx map
-            ctxMap.put(queueName, ctx.channel());
-            Queue<MQEntity> curQueue = queueMap.get(queueName);
-            // 如果不存在队列就进行创建
-            if (curQueue == null) {
-                curQueue = new LinkedList<>();
-                queueMap.put(queueName, curQueue);
-            } else {
-                // 如果是主动推送模式
-                if (isPushMode) {
-                    while (!curQueue.isEmpty()) {
-                        MQEntity curMsg = curQueue.poll();
-                        curMsg.setMsgStatus(MsgStatus.SEND_TO_CONSUMER);
-                        curMsg.setMsgCount(curQueue.size());
-                        ctx.writeAndFlush(curMsg);
+        ProtocolStringList queueList = request.getToQueueList();
+        if (!queueList.isEmpty()) {
+            for (String queueName : queueList) {
+                // 设置 ctx map
+                ctxMap.put(queueName, ctx.channel());
+                Queue<MQMessage.MQEntity> curQueue = queueMap.get(queueName);
+                // 如果不存在队列就进行创建
+                if (curQueue == null) {
+                    curQueue = new LinkedList<>();
+                    queueMap.put(queueName, curQueue);
+                } else {
+                    // 如果是主动推送模式
+                    if (isPushMode) {
+                        while (!curQueue.isEmpty()) {
+                            ctx.writeAndFlush(curQueue.poll());
+                        }
                     }
                 }
             }
         }
-
     }
 
     @Override

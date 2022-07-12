@@ -1,10 +1,8 @@
 package com.krest.mq.starter.consumer;
 
-import com.krest.mq.core.client.MQClient;
 import com.krest.mq.starter.anno.KrestConsumer;
 import com.krest.mq.starter.anno.KrestMQListener;
 import com.krest.mq.starter.properties.KrestMQProperties;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +30,6 @@ public class RegisterConsumer implements BeanPostProcessor {
 
         // 如果标志了消息队列的注解
         if (bean.getClass().isAnnotationPresent(KrestConsumer.class)) {
-
             // 获取方法有条件Listener的注解信息
             Class<?> beanClass = bean.getClass();
             Method[] declaredMethods = beanClass.getDeclaredMethods();

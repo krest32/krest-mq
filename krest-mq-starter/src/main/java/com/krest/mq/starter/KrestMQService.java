@@ -1,13 +1,12 @@
 package com.krest.mq.starter;
 
 import com.krest.mq.core.client.MQClient;
-import com.krest.mq.core.entity.ChannelInactiveListener;
-import com.krest.mq.core.entity.MQEntity;
-import com.krest.mq.core.entity.ModuleType;
-import com.krest.mq.core.entity.MsgStatus;
-import com.krest.mq.core.producer.MQProducerHandler;
+import com.krest.mq.core.entity.*;
+import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.starter.producer.ProducerHandlerAdapter;
 import com.krest.mq.starter.properties.KrestMQProperties;
+
+import java.util.UUID;
 
 public class KrestMQService {
 
@@ -19,12 +18,15 @@ public class KrestMQService {
 
     public MQClient getMqProducer() {
 
-        MQEntity entity = new MQEntity("producer connect info ",
-                "default", ModuleType.PRODUCER);
-        // 链接到Server
-        entity.setMsgStatus(MsgStatus.PRODUCER_CONNECT_SERVER);
+        MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
+        MQMessage.MQEntity request = builder.setId(UUID.randomUUID().toString())
+                .setIsAck(true)
+                .setMsgType(1)
+                .setDateTime(DateUtils.getNowDate())
+                .addToQueue("default")
+                .build();
 
-        MQClient client = new MQClient(config.getHost(), config.getPort(), entity);
+        MQClient client = new MQClient(config.getHost(), config.getPort(), request);
         ChannelInactiveListener inactiveListener = client.getInactiveListener();
         ProducerHandlerAdapter handlerAdapter = new ProducerHandlerAdapter(inactiveListener);
         client.connect(handlerAdapter);

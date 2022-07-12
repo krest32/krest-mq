@@ -1,12 +1,12 @@
 package com.krest.producer.controller;
 
 import com.krest.mq.core.client.MQClient;
-import com.krest.mq.core.entity.MQEntity;
-import com.krest.mq.core.entity.ModuleType;
-import com.krest.mq.core.entity.MsgStatus;
-import com.krest.mq.core.producer.MQProducer;
+import com.krest.mq.core.entity.MQMessage;
+import com.krest.mq.core.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RequestMapping("producer")
 @RestController
@@ -18,7 +18,16 @@ public class ProducerController {
     @GetMapping("send/{queue}/{msg}")
     public String sendMsg(@PathVariable String queue,
                           @PathVariable String msg) throws InterruptedException {
-        mqClient.sendMsg(new MQEntity(msg, queue, ModuleType.PRODUCER, MsgStatus.SEND_TO_SERVER));
+
+        MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
+        MQMessage.MQEntity request = builder.setId(UUID.randomUUID().toString())
+                .setIsAck(true)
+                .setMsgType(1)
+                .addToQueue(queue)
+                .setMsg(msg)
+                .setDateTime(DateUtils.getNowDate())
+                .build();
+        mqClient.sendMsg(request);
         return msg;
     }
 }

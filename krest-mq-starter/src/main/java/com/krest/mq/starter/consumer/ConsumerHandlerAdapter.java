@@ -1,20 +1,18 @@
 package com.krest.mq.starter.consumer;
 
 import com.krest.mq.core.entity.ChannelInactiveListener;
-import com.krest.mq.core.entity.MQEntity;
+import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.starter.anno.KrestMQListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
-import java.util.Set;
 
 
 @Slf4j
-@ChannelHandler.Sharable
-public class ConsumerHandlerAdapter extends ChannelInboundHandlerAdapter {
+public class ConsumerHandlerAdapter extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
 
     ChannelInactiveListener inactiveListener;
     Object bean;
@@ -27,17 +25,17 @@ public class ConsumerHandlerAdapter extends ChannelInboundHandlerAdapter {
         this.bean = bean;
     }
 
+
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        System.out.println("消费者获取信息：" + msg);
-        MQEntity entity = (MQEntity) msg;
+    protected void channelRead0(ChannelHandlerContext ctx, MQMessage.MQEntity response) throws Exception {
+        System.out.println("消费者获取信息：" + response);
         Method[] declaredMethods = this.bean.getClass().getDeclaredMethods();
         for (Method method : declaredMethods) {
             if (method.isAnnotationPresent(KrestMQListener.class)) {
                 KrestMQListener krestMQListener = method.getAnnotation(KrestMQListener.class);
                 String queue = krestMQListener.queue();
-                if (queue.equals(entity.getQueue())) {
-                    method.invoke(bean, ctx, entity.getMsg());
+                if (queue.equals(response.getFromQueue())) {
+                    method.invoke(bean, ctx, response);
                 }
             }
         }

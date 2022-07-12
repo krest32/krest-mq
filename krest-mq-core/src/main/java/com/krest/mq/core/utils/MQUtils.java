@@ -1,26 +1,24 @@
 package com.krest.mq.core.utils;
 
-import com.krest.mq.core.entity.MQEntity;
+import com.krest.mq.core.entity.MQMessage;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Bean;
-import org.springframework.stereotype.Component;
 
 @Slf4j
 public class MQUtils {
 
     public static Channel tryConnect(Bootstrap bootstrap, String host,
-                                     int port, MQEntity mqEntity) {
+                                     int port, MQMessage.MQEntity request) {
         try {
             log.info("connect to netty server [" + host + ":" + port + "].");
             ChannelFuture future = bootstrap.connect(host, port).sync();
             if (future.isSuccess()) {
                 log.info("Connect to [" + host + ":" + port + "] successed.");
                 Channel channel = future.channel();
-                if (mqEntity != null) {
-                    sendMsg(channel, mqEntity);
+                if (request != null) {
+                    sendMsg(channel, request);
                 }
                 return channel;
             } else {
@@ -42,9 +40,9 @@ public class MQUtils {
     }
 
 
-    public static void sendMsg(Channel channel, MQEntity entity) {
+    public static void sendMsg(Channel channel, MQMessage.MQEntity request) {
         try {
-            channel.writeAndFlush(entity).sync();
+            channel.writeAndFlush(request).sync();
         } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
         }

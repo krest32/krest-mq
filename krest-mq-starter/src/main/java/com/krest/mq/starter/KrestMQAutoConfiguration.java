@@ -1,9 +1,7 @@
 package com.krest.mq.starter;
 
 import com.krest.mq.core.client.MQClient;
-import com.krest.mq.core.consumer.MQConsumer;
 import com.krest.mq.starter.properties.KrestMQProperties;
-import com.krest.mq.core.producer.MQProducer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;

@@ -1,0 +1,30 @@
+//使用 proto3 语法 ,未指定则使用proto2
+syntax = "proto3";
+option optimize_for = SPEED; // 加快解析
+//option java_multiple_files = true; //如果为true，每个message和service都会被生成为一个类。
+//生成 proto 文件所在包路径
+//package com.krest.proto;
+
+//生成 proto 文件所在包路径
+option java_package = "com.krest.mq.core.entity";
+//生成 proto 文件名
+option java_outer_classname = "MQMessage";
+
+message MQEntity {
+    //消息 id
+    string id = 1;
+    // 插入消息队列
+    repeated string toQueue = 2;
+    // 返回消息队列
+    string fromQueue = 3;
+    // 消息内容
+    string msg = 4;
+    // 消息时间
+    string dateTime = 5;
+    // 是否需要 ack
+    bool isAck = 6;
+    // ack 标志位
+    bool ack = 7;
+    // 消息类型 0 生产者，1 消费者
+    int32 msgType = 8;
+}
