@@ -1,7 +1,8 @@
 package com.krest.mq.starter;
 
-import com.krest.mq.core.client.MQClient;
+import com.krest.mq.core.client.MQTCPClient;
 import com.krest.mq.core.entity.*;
+import com.krest.mq.core.listener.ChannelInactiveListener;
 import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.starter.producer.ProducerHandlerAdapter;
 import com.krest.mq.starter.properties.KrestMQProperties;
@@ -16,7 +17,7 @@ public class KrestMQService {
         this.config = config;
     }
 
-    public MQClient getMqProducer() {
+    public MQTCPClient getMqProducer() {
 
         MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
         MQMessage.MQEntity request = builder.setId(UUID.randomUUID().toString())
@@ -26,7 +27,7 @@ public class KrestMQService {
                 .addToQueue("default")
                 .build();
 
-        MQClient client = new MQClient(config.getHost(), config.getPort(), request);
+        MQTCPClient client = new MQTCPClient(config.getHost(), config.getPort(), request);
         ChannelInactiveListener inactiveListener = client.getInactiveListener();
         ProducerHandlerAdapter handlerAdapter = new ProducerHandlerAdapter(inactiveListener);
         client.connect(handlerAdapter);

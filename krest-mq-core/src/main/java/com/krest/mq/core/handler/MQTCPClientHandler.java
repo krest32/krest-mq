@@ -1,28 +1,28 @@
-package com.krest.mq.core.client;
+package com.krest.mq.core.handler;
 
-import com.krest.mq.core.entity.ChannelInactiveListener;
+import com.krest.mq.core.listener.ChannelInactiveListener;
 import com.krest.mq.core.entity.MQMessage;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class MQClientHandler extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
+public class MQTCPClientHandler extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
 
     private ChannelInactiveListener inactiveListener = null;
 
-    public MQClientHandler() {
+    public MQTCPClientHandler() {
     }
 
-    public MQClientHandler(ChannelInactiveListener channelInactiveListener) {
+    public MQTCPClientHandler(ChannelInactiveListener channelInactiveListener) {
         this.inactiveListener = channelInactiveListener;
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, MQMessage.MQEntity msg) throws Exception {
         System.out.println("收到消息");
+        System.out.println(msg.toByteArray().length);
         System.out.println(msg);
     }
 

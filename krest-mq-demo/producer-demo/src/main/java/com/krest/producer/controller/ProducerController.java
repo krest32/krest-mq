@@ -1,6 +1,6 @@
 package com.krest.producer.controller;
 
-import com.krest.mq.core.client.MQClient;
+import com.krest.mq.core.client.MQTCPClient;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +13,7 @@ import java.util.UUID;
 public class ProducerController {
 
     @Autowired
-    MQClient mqClient;
+    MQTCPClient mqClient;
 
     @GetMapping("send/{queue}/{msg}")
     public String sendMsg(@PathVariable String queue,

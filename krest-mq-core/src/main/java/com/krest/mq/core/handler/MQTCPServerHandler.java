@@ -1,4 +1,4 @@
-package com.krest.mq.core.server;
+package com.krest.mq.core.handler;
 
 import com.google.protobuf.ProtocolStringList;
 import com.krest.mq.core.entity.MQMessage;
@@ -12,14 +12,14 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.*;
 
 @Slf4j
-public class MqServerHandler extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
+public class MQTCPServerHandler extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
 
     boolean isPushMode = false;
 
-    private MqServerHandler() {
+    private MQTCPServerHandler() {
     }
 
-    public MqServerHandler(boolean isPushMode) {
+    public MQTCPServerHandler(boolean isPushMode) {
         this.isPushMode = isPushMode;
     }
 

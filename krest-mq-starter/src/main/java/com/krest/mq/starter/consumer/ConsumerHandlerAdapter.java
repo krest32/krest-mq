@@ -1,9 +1,8 @@
 package com.krest.mq.starter.consumer;
 
-import com.krest.mq.core.entity.ChannelInactiveListener;
+import com.krest.mq.core.listener.ChannelInactiveListener;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.starter.anno.KrestMQListener;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.extern.slf4j.Slf4j;

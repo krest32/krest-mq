@@ -1,7 +1,8 @@
 package com.krest.mq.starter.consumer;
 
-import com.krest.mq.core.client.MQClient;
+import com.krest.mq.core.client.MQTCPClient;
 import com.krest.mq.core.entity.*;
+import com.krest.mq.core.listener.ChannelInactiveListener;
 import com.krest.mq.core.utils.DateUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,7 +41,7 @@ public class MQConsumerRunnable implements Runnable {
                 .setIsAck(true)
                 .addAllToQueue(queueList)
                 .build();
-        MQClient mqConsumer = new MQClient(host, port, request);
+        MQTCPClient mqConsumer = new MQTCPClient(host, port, request);
 
         ChannelInactiveListener inactiveListener = mqConsumer.getInactiveListener();
         ConsumerHandlerAdapter handlerAdapter = new ConsumerHandlerAdapter(inactiveListener, this.bean);

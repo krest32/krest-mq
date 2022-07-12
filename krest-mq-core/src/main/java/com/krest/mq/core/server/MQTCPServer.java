@@ -1,40 +1,40 @@
 package com.krest.mq.core.server;
 
 import com.krest.mq.core.entity.MQMessage;
+import com.krest.mq.core.handler.MQTCPServerHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.protobuf.ProtobufDecoder;
 import io.netty.handler.codec.protobuf.ProtobufEncoder;
-import io.netty.handler.codec.serialization.ClassResolvers;
-import io.netty.handler.codec.serialization.ObjectDecoder;
-import io.netty.handler.codec.serialization.ObjectEncoder;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class MqServer {
+public class MQTCPServer implements MQServer {
     NioEventLoopGroup bossGroup;
     NioEventLoopGroup workGroup;
     boolean isPushMode = false;
     int port;
 
-
-    private MqServer() {
+    private MQTCPServer() {
     }
 
-    public MqServer(int port) {
+    public MQTCPServer(@NonNull int port) {
         this.port = port;
     }
 
-    public MqServer(int port, boolean isPushMode) {
+    public MQTCPServer(int port, boolean isPushMode) {
         this.port = port;
         this.isPushMode = isPushMode;
     }
 
-    public void start() {
+    @Override
+    public void start(ChannelInboundHandlerAdapter handler) {
         bossGroup = new NioEventLoopGroup();
         workGroup = new NioEventLoopGroup();
         ServerBootstrap serverBootstrap = new ServerBootstrap();
@@ -47,11 +47,12 @@ public class MqServer {
                         // 加入一个Decoder
                         ch.pipeline().addLast(new ProtobufDecoder(MQMessage.MQEntity.getDefaultInstance()));
                         ch.pipeline().addLast(new ProtobufEncoder());
-                        //                        ch.pipeline().addLast(new ObjectDecoder(Integer.MAX_VALUE, ClassResolvers.cacheDisabled(null)));
-//                        ch.pipeline().addLast(new ObjectEncoder());
-                        ch.pipeline().addLast(new MqServerHandler(isPushMode));
+                        if (handler != null) {
+                            ch.pipeline().addLast(new MQTCPServerHandler(isPushMode));
+                        }
                     }
                 });
+
         try {
             ChannelFuture future = serverBootstrap.bind().sync();
             log.info("mq server start at : {} ", port);

@@ -4,8 +4,9 @@
 
 1. 消费者生产者一对一、一对多模式
 2. 自定义Spring Starter 整合 Spring Boot
-3. 消息 Ack 机制
-4. 消息主动 Push模式
+3. 基于protobuf传递消息
+4. 消息 Ack 机制
+5. 消息主动 Push 模式
 
 ## 未来目标
 

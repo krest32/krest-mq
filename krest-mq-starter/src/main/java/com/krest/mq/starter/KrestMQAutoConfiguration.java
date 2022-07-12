@@ -1,6 +1,6 @@
 package com.krest.mq.starter;
 
-import com.krest.mq.core.client.MQClient;
+import com.krest.mq.core.client.MQTCPClient;
 import com.krest.mq.starter.properties.KrestMQProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -32,7 +32,7 @@ public class KrestMQAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public MQClient getMQProducer() {
+    public MQTCPClient getMQProducer() {
         // 在这个方法中，可以实现注册服务的方法
         this.krestMQService = new KrestMQService(this.configProperties);
         return this.krestMQService.getMqProducer();
