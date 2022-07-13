@@ -1,8 +1,8 @@
 package com.krest.mq.core.client;
 
-import com.krest.mq.core.listener.ChannelInactiveListener;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.utils.MQUtils;
+import com.krest.mq.core.listener.ChannelListener;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -12,6 +12,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.protobuf.ProtobufDecoder;
 import io.netty.handler.codec.protobuf.ProtobufEncoder;
+import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
+import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -20,7 +22,7 @@ public class MQTCPClient implements MQClient {
     private String host;
     private int port;
 
-    ChannelInactiveListener inactiveListener;
+    ChannelListener inactiveListener;
     private Bootstrap bootstrap;
     private Channel channel;
     EventLoopGroup workGroup = new NioEventLoopGroup();
@@ -29,7 +31,7 @@ public class MQTCPClient implements MQClient {
     private MQTCPClient() {
     }
 
-    public ChannelInactiveListener getInactiveListener() {
+    public ChannelListener getInactiveListener() {
         return inactiveListener;
     }
 
@@ -75,18 +77,18 @@ public class MQTCPClient implements MQClient {
                         @Override
                         protected void initChannel(Channel ch) throws Exception {
                             // 客户端 -> 解码器
+                            ch.pipeline().addLast(new ProtobufVarint32FrameDecoder());//解决粘包半包编码器
+                            // 加入一个Decoder
                             ch.pipeline().addLast(new ProtobufDecoder(MQMessage.MQEntity.getDefaultInstance()));
+                            ch.pipeline().addLast(new ProtobufVarint32LengthFieldPrepender());//解决粘包半包编码器
                             ch.pipeline().addLast(new ProtobufEncoder());
-                            if (handlerAdapter != null) {
-                                ch.pipeline().addLast(handlerAdapter);
-                            }
+                            ch.pipeline().addLast(handlerAdapter.getClass().newInstance());
                         }
                     });
             do {
                 channel = MQUtils.tryConnect(bootstrap, host, port);
             }
             while (channel == null);
-
         } catch (Exception e) {
             log.error(e.getMessage(), e);
         }

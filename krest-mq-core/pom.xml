@@ -13,6 +13,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.krest</groupId>
+            <artifactId>krest-file</artifactId>
+            <version>1.0-bate</version>
+        </dependency>
+        <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
         </dependency>

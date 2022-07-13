@@ -1,6 +1,6 @@
 package com.krest.mq.starter.consumer;
 
-import com.krest.mq.core.listener.ChannelInactiveListener;
+import com.krest.mq.core.listener.ChannelListener;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.starter.anno.KrestMQListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -13,13 +13,13 @@ import java.lang.reflect.Method;
 @Slf4j
 public class ConsumerHandlerAdapter extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
 
-    ChannelInactiveListener inactiveListener;
+    ChannelListener inactiveListener;
     Object bean;
 
     private ConsumerHandlerAdapter() {
     }
 
-    public ConsumerHandlerAdapter(ChannelInactiveListener inactiveListener, Object bean) {
+    public ConsumerHandlerAdapter(ChannelListener inactiveListener, Object bean) {
         this.inactiveListener = inactiveListener;
         this.bean = bean;
     }
@@ -33,7 +33,7 @@ public class ConsumerHandlerAdapter extends SimpleChannelInboundHandler<MQMessag
             if (method.isAnnotationPresent(KrestMQListener.class)) {
                 KrestMQListener krestMQListener = method.getAnnotation(KrestMQListener.class);
                 String queue = krestMQListener.queue();
-                if (queue.equals(response.getFromQueue())) {
+                if (queue.equals(response.getQueueList())) {
                     method.invoke(bean, ctx, response);
                 }
             }

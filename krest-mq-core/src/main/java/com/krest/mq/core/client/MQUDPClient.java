@@ -1,6 +1,7 @@
 package com.krest.mq.core.client;
 
-import com.krest.mq.core.listener.ChannelInactiveListener;
+import com.krest.mq.core.config.MQConfig;
+import com.krest.mq.core.listener.ChannelListener;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.utils.MQUtils;
 import io.netty.bootstrap.Bootstrap;
@@ -9,15 +10,15 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.handler.codec.protobuf.ProtobufDecoder;
 import io.netty.handler.codec.protobuf.ProtobufEncoder;
+import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
+import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MQUDPClient implements MQClient {
 
-    private String host;
-    private int port;
-
-    ChannelInactiveListener inactiveListener;
+    MQConfig mqConfig;
+    ChannelListener inactiveListener;
     private Bootstrap bootstrap;
     private Channel channel;
     EventLoopGroup workGroup = new NioEventLoopGroup();
@@ -26,38 +27,31 @@ public class MQUDPClient implements MQClient {
     private MQUDPClient() {
     }
 
-    public ChannelInactiveListener getInactiveListener() {
+    public ChannelListener getInactiveListener() {
         return inactiveListener;
     }
 
     /**
      * 构造方法
      */
-    public MQUDPClient(String host, int port) {
-        this.host = host;
-        this.port = port;
+    public MQUDPClient(MQConfig mqConfig) {
+        this.mqConfig = mqConfig;
         inactiveListener = () -> {
             log.info("connection with server is closed.");
             log.info("try to reconnect to the server.");
             channel = null;
             do {
-                channel = MQUtils.tryConnect(bootstrap, host, port);
+                channel = MQUtils.tryConnect(bootstrap, this.mqConfig.getRemoteAddress(), this.mqConfig.getPort());
             }
             while (channel == null);
         };
     }
 
     public void sendMsg(MQMessage.MQEntity request) {
-        if (channel == null) {
-            do {
-                channel = MQUtils.tryConnect(bootstrap, host, port);
-            }
-            while (channel == null);
-        }
         try {
             channel.writeAndFlush(request).sync();
         } catch (InterruptedException e) {
-            log.error(e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -67,20 +61,21 @@ public class MQUDPClient implements MQClient {
         try {
             bootstrap.group(workGroup)
                     .channel(NioDatagramChannel.class)
-                    .option(ChannelOption.SO_BROADCAST, true)
                     .handler(new ChannelInitializer<NioDatagramChannel>() {
                         @Override
                         protected void initChannel(NioDatagramChannel ch) throws Exception {
-                            // 客户端 -> 解码器
                             ch.pipeline().addLast(new ProtobufDecoder(MQMessage.MQEntity.getDefaultInstance()));
                             ch.pipeline().addLast(new ProtobufEncoder());
-                            if (handlerAdapter != null) {
-                                ch.pipeline().addLast(handlerAdapter);
-                            }
+                            ch.pipeline().addLast(handlerAdapter.getClass().newInstance());
                         }
-                    });
+                    }).
+                    option(ChannelOption.SO_BROADCAST, true);
+
+            bootstrap.bind(this.mqConfig.getPort());
             do {
-                channel = MQUtils.tryConnect(bootstrap, host, port);
+                channel = MQUtils.tryConnect(bootstrap,
+                        this.mqConfig.getRemoteAddress(),
+                        this.mqConfig.getRemotePort());
             }
             while (channel == null);
         } catch (Exception e) {
@@ -93,7 +88,6 @@ public class MQUDPClient implements MQClient {
         connect(handlerAdapter);
         sendMsg(mqEntity);
     }
-
 
     public void stop() {
         if (null != this.workGroup) {

@@ -1,27 +1,25 @@
 package com.krest.mq.core.server;
 
+import com.krest.mq.core.config.MQConfig;
 import com.krest.mq.core.entity.ConnType;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import lombok.Data;
-import lombok.NonNull;
 
 @Data
 public class MQServerFactory {
-    private ConnType connType;
+    private MQConfig mqConfig;
     private MQServer mqServer;
 
     private MQServerFactory() {
     }
 
-    public MQServerFactory(@NonNull ConnType connType, @NonNull int port) {
-        this.connType = connType;
-        if (connType.equals(ConnType.TCP)) {
-            mqServer = new MQTCPServer(port);
+    public MQServerFactory(MQConfig mqConfig) {
+        this.mqConfig = mqConfig;
+        if (mqConfig.getConnType().equals(ConnType.TCP)) {
+            mqServer = new MQTCPServer(this.mqConfig);
         } else {
-            mqServer = new MQUDPServer(port);
+            mqServer = new MQUDPServer(this.mqConfig);
         }
     }
-
 
     public MQServer getServer() {
         return this.mqServer;

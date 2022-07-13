@@ -1,40 +1,36 @@
 package com.krest.mq.core.server;
 
+import com.krest.mq.core.config.MQConfig;
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.handler.MQTCPServerHandler;
 import com.krest.mq.core.handler.MQUDPServerHandler;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.handler.codec.protobuf.ProtobufDecoder;
 import io.netty.handler.codec.protobuf.ProtobufEncoder;
+import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
+import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MQUDPServer implements MQServer {
     NioEventLoopGroup workGroup;
-    boolean isPushMode = false;
-    int port;
+    MQConfig mqConfig;
 
     private MQUDPServer() {
     }
 
-    public MQUDPServer(int port) {
-        this.port = port;
-    }
-
-    public MQUDPServer(int port, boolean isPushMode) {
-        this.port = port;
-        this.isPushMode = isPushMode;
+    public MQUDPServer(MQConfig mqConfig) {
+        this.mqConfig = mqConfig;
     }
 
 
     @Override
-    public void start(ChannelInboundHandlerAdapter handler) {
-        workGroup = new NioEventLoopGroup(16);
+    public void start() {
+        workGroup = new NioEventLoopGroup();
         Bootstrap serverBootstrap = new Bootstrap();
         serverBootstrap.group(workGroup)
                 .channel(NioDatagramChannel.class)
@@ -44,9 +40,7 @@ public class MQUDPServer implements MQServer {
                         // 加入一个Decoder
                         ch.pipeline().addLast(new ProtobufDecoder(MQMessage.MQEntity.getDefaultInstance()));
                         ch.pipeline().addLast(new ProtobufEncoder());
-                        if (handler != null) {
-                            ch.pipeline().addLast(handler);
-                        }
+                        ch.pipeline().addLast(new MQUDPServerHandler());
                     }
                 })
                 .option(ChannelOption.SO_BROADCAST, true)
@@ -54,8 +48,9 @@ public class MQUDPServer implements MQServer {
                 .option(ChannelOption.SO_SNDBUF, 1024 * 1024);// 设置UDP写缓冲区为1M;
 
         try {
-            serverBootstrap.bind(port).sync().channel().closeFuture().await();
-            log.info("mq server start at : {} ", port);
+            ChannelFuture future = serverBootstrap.bind(mqConfig.getPort()).sync();
+            log.info("mq server start at : {} ", mqConfig.getPort());
+            future.channel().closeFuture().await();
         } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
         } finally {
@@ -65,9 +60,4 @@ public class MQUDPServer implements MQServer {
         }
     }
 
-    public void stop() {
-        if (null != workGroup) {
-            workGroup.shutdownGracefully();
-        }
-    }
 }

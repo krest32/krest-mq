@@ -1,23 +1,21 @@
 package com.krest.mq.core.client;
 
+import com.krest.mq.core.config.MQConfig;
 import com.krest.mq.core.entity.ConnType;
-import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.utils.DateUtils;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import lombok.NonNull;
+
 
 
 public class MQClientFactory {
 
     MQClient mqClient;
+    MQConfig mqConfig;
 
-    public MQClientFactory(@NonNull ConnType connType, @NonNull String address,
-                           @NonNull int port) {
-
-        if (connType.equals(ConnType.TCP)) {
-            mqClient = new MQTCPClient(address, port);
+    public MQClientFactory(MQConfig mqConfig) {
+        this.mqConfig = mqConfig;
+        if (this.mqConfig.getConnType().equals(ConnType.TCP)) {
+            mqClient = new MQTCPClient(this.mqConfig.getRemoteAddress(), this.mqConfig.getPort());
         } else {
-            mqClient = new MQUDPClient(address, port);
+            mqClient = new MQUDPClient(this.mqConfig);
         }
     }
 

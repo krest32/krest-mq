@@ -14,9 +14,9 @@ message MQEntity {
     //消息 id
     string id = 1;
     // 插入消息队列
-    repeated string toQueue = 2;
-    // 返回消息队列
-    string fromQueue = 3;
+    repeated string queue = 2;
+    // 消费者设置 queue, 1 永久 2 临时
+    map<string, int32 > queueInfo = 3;
     // 消息内容
     string msg = 4;
     // 消息时间
@@ -25,6 +25,13 @@ message MQEntity {
     bool isAck = 6;
     // ack 标志位
     bool ack = 7;
-    // 消息类型 0 生产者，1 消费者
+    // 消息类型 1 生产着 2 消费者
     int32 msgType = 8;
+    // 错误标识位
+    bool errFlag = 9;
+    // 传输方式 1 tcp, 2 udp
+    int32 connType = 10;
+    string address = 11;
+    int32  port = 12;
 }
+

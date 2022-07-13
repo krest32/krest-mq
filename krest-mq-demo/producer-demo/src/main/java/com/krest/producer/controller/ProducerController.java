@@ -23,7 +23,7 @@ public class ProducerController {
         MQMessage.MQEntity request = builder.setId(UUID.randomUUID().toString())
                 .setIsAck(true)
                 .setMsgType(1)
-                .addToQueue(queue)
+                .addQueue(queue)
                 .setMsg(msg)
                 .setDateTime(DateUtils.getNowDate())
                 .build();

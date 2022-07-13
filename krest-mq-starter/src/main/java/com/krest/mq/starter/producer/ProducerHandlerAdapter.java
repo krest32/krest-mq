@@ -1,6 +1,6 @@
 package com.krest.mq.starter.producer;
 
-import com.krest.mq.core.listener.ChannelInactiveListener;
+import com.krest.mq.core.listener.ChannelListener;
 import com.krest.mq.core.entity.MQMessage;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -10,12 +10,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ProducerHandlerAdapter extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
 
-    ChannelInactiveListener inactiveListener;
+    ChannelListener inactiveListener;
 
     private ProducerHandlerAdapter() {
     }
 
-    public ProducerHandlerAdapter(ChannelInactiveListener inactiveListener) {
+    public ProducerHandlerAdapter(ChannelListener inactiveListener) {
         this.inactiveListener = inactiveListener;
     }
 

@@ -43,61 +43,95 @@ public final class MQMessage {
      * 插入消息队列
      * </pre>
      *
-     * <code>repeated string toQueue = 2;</code>
-     * @return A list containing the toQueue.
+     * <code>repeated string queue = 2;</code>
+     * @return A list containing the queue.
      */
     java.util.List<java.lang.String>
-        getToQueueList();
+        getQueueList();
     /**
      * <pre>
      * 插入消息队列
      * </pre>
      *
-     * <code>repeated string toQueue = 2;</code>
-     * @return The count of toQueue.
+     * <code>repeated string queue = 2;</code>
+     * @return The count of queue.
      */
-    int getToQueueCount();
+    int getQueueCount();
     /**
      * <pre>
      * 插入消息队列
      * </pre>
      *
-     * <code>repeated string toQueue = 2;</code>
+     * <code>repeated string queue = 2;</code>
      * @param index The index of the element to return.
-     * @return The toQueue at the given index.
+     * @return The queue at the given index.
      */
-    java.lang.String getToQueue(int index);
+    java.lang.String getQueue(int index);
     /**
      * <pre>
      * 插入消息队列
      * </pre>
      *
-     * <code>repeated string toQueue = 2;</code>
+     * <code>repeated string queue = 2;</code>
      * @param index The index of the value to return.
-     * @return The bytes of the toQueue at the given index.
+     * @return The bytes of the queue at the given index.
      */
     com.google.protobuf.ByteString
-        getToQueueBytes(int index);
+        getQueueBytes(int index);
 
     /**
      * <pre>
-     * 返回消息队列
+     * 消费者设置 queue, 1 永久 2 临时
      * </pre>
      *
-     * <code>string fromQueue = 3;</code>
-     * @return The fromQueue.
+     * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
      */
-    java.lang.String getFromQueue();
+    int getQueueInfoCount();
     /**
      * <pre>
-     * 返回消息队列
+     * 消费者设置 queue, 1 永久 2 临时
      * </pre>
      *
-     * <code>string fromQueue = 3;</code>
-     * @return The bytes for fromQueue.
+     * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
      */
-    com.google.protobuf.ByteString
-        getFromQueueBytes();
+    boolean containsQueueInfo(
+        java.lang.String key);
+    /**
+     * Use {@link #getQueueInfoMap()} instead.
+     */
+    @java.lang.Deprecated
+    java.util.Map<java.lang.String, java.lang.Integer>
+    getQueueInfo();
+    /**
+     * <pre>
+     * 消费者设置 queue, 1 永久 2 临时
+     * </pre>
+     *
+     * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
+     */
+    java.util.Map<java.lang.String, java.lang.Integer>
+    getQueueInfoMap();
+    /**
+     * <pre>
+     * 消费者设置 queue, 1 永久 2 临时
+     * </pre>
+     *
+     * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
+     */
+
+    int getQueueInfoOrDefault(
+        java.lang.String key,
+        int defaultValue);
+    /**
+     * <pre>
+     * 消费者设置 queue, 1 永久 2 临时
+     * </pre>
+     *
+     * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
+     */
+
+    int getQueueInfoOrThrow(
+        java.lang.String key);
 
     /**
      * <pre>
@@ -161,13 +195,51 @@ public final class MQMessage {
 
     /**
      * <pre>
-     * 消息类型 0 生产者，1 消费者
+     * 消息类型 1 生产着 2 消费者
      * </pre>
      *
      * <code>int32 msgType = 8;</code>
      * @return The msgType.
      */
     int getMsgType();
+
+    /**
+     * <pre>
+     * 错误标识位
+     * </pre>
+     *
+     * <code>bool errFlag = 9;</code>
+     * @return The errFlag.
+     */
+    boolean getErrFlag();
+
+    /**
+     * <pre>
+     * 传输方式 1 tcp, 2 udp
+     * </pre>
+     *
+     * <code>int32 connType = 10;</code>
+     * @return The connType.
+     */
+    int getConnType();
+
+    /**
+     * <code>string address = 11;</code>
+     * @return The address.
+     */
+    java.lang.String getAddress();
+    /**
+     * <code>string address = 11;</code>
+     * @return The bytes for address.
+     */
+    com.google.protobuf.ByteString
+        getAddressBytes();
+
+    /**
+     * <code>int32 port = 12;</code>
+     * @return The port.
+     */
+    int getPort();
   }
   /**
    * Protobuf type {@code MQEntity}
@@ -183,10 +255,10 @@ public final class MQMessage {
     }
     private MQEntity() {
       id_ = "";
-      toQueue_ = com.google.protobuf.LazyStringArrayList.EMPTY;
-      fromQueue_ = "";
+      queue_ = com.google.protobuf.LazyStringArrayList.EMPTY;
       msg_ = "";
       dateTime_ = "";
+      address_ = "";
     }
 
     @java.lang.Override
@@ -229,16 +301,23 @@ public final class MQMessage {
             case 18: {
               java.lang.String s = input.readStringRequireUtf8();
               if (!((mutable_bitField0_ & 0x00000001) != 0)) {
-                toQueue_ = new com.google.protobuf.LazyStringArrayList();
+                queue_ = new com.google.protobuf.LazyStringArrayList();
                 mutable_bitField0_ |= 0x00000001;
               }
-              toQueue_.add(s);
+              queue_.add(s);
               break;
             }
             case 26: {
-              java.lang.String s = input.readStringRequireUtf8();
-
-              fromQueue_ = s;
+              if (!((mutable_bitField0_ & 0x00000002) != 0)) {
+                queueInfo_ = com.google.protobuf.MapField.newMapField(
+                    QueueInfoDefaultEntryHolder.defaultEntry);
+                mutable_bitField0_ |= 0x00000002;
+              }
+              com.google.protobuf.MapEntry<java.lang.String, java.lang.Integer>
+              queueInfo__ = input.readMessage(
+                  QueueInfoDefaultEntryHolder.defaultEntry.getParserForType(), extensionRegistry);
+              queueInfo_.getMutableMap().put(
+                  queueInfo__.getKey(), queueInfo__.getValue());
               break;
             }
             case 34: {
@@ -268,6 +347,27 @@ public final class MQMessage {
               msgType_ = input.readInt32();
               break;
             }
+            case 72: {
+
+              errFlag_ = input.readBool();
+              break;
+            }
+            case 80: {
+
+              connType_ = input.readInt32();
+              break;
+            }
+            case 90: {
+              java.lang.String s = input.readStringRequireUtf8();
+
+              address_ = s;
+              break;
+            }
+            case 96: {
+
+              port_ = input.readInt32();
+              break;
+            }
             default: {
               if (!parseUnknownField(
                   input, unknownFields, extensionRegistry, tag)) {
@@ -284,7 +384,7 @@ public final class MQMessage {
             e).setUnfinishedMessage(this);
       } finally {
         if (((mutable_bitField0_ & 0x00000001) != 0)) {
-          toQueue_ = toQueue_.getUnmodifiableView();
+          queue_ = queue_.getUnmodifiableView();
         }
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
@@ -295,6 +395,18 @@ public final class MQMessage {
       return com.krest.mq.core.entity.MQMessage.internal_static_MQEntity_descriptor;
     }
 
+    @SuppressWarnings({"rawtypes"})
+    @java.lang.Override
+    protected com.google.protobuf.MapField internalGetMapField(
+        int number) {
+      switch (number) {
+        case 3:
+          return internalGetQueueInfo();
+        default:
+          throw new RuntimeException(
+              "Invalid map field number: " + number);
+      }
+    }
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
@@ -349,101 +461,152 @@ public final class MQMessage {
       }
     }
 
-    public static final int TOQUEUE_FIELD_NUMBER = 2;
-    private com.google.protobuf.LazyStringList toQueue_;
+    public static final int QUEUE_FIELD_NUMBER = 2;
+    private com.google.protobuf.LazyStringList queue_;
     /**
      * <pre>
      * 插入消息队列
      * </pre>
      *
-     * <code>repeated string toQueue = 2;</code>
-     * @return A list containing the toQueue.
+     * <code>repeated string queue = 2;</code>
+     * @return A list containing the queue.
      */
     public com.google.protobuf.ProtocolStringList
-        getToQueueList() {
-      return toQueue_;
+        getQueueList() {
+      return queue_;
     }
     /**
      * <pre>
      * 插入消息队列
      * </pre>
      *
-     * <code>repeated string toQueue = 2;</code>
-     * @return The count of toQueue.
+     * <code>repeated string queue = 2;</code>
+     * @return The count of queue.
      */
-    public int getToQueueCount() {
-      return toQueue_.size();
+    public int getQueueCount() {
+      return queue_.size();
     }
     /**
      * <pre>
      * 插入消息队列
      * </pre>
      *
-     * <code>repeated string toQueue = 2;</code>
+     * <code>repeated string queue = 2;</code>
      * @param index The index of the element to return.
-     * @return The toQueue at the given index.
+     * @return The queue at the given index.
      */
-    public java.lang.String getToQueue(int index) {
-      return toQueue_.get(index);
+    public java.lang.String getQueue(int index) {
+      return queue_.get(index);
     }
     /**
      * <pre>
      * 插入消息队列
      * </pre>
      *
-     * <code>repeated string toQueue = 2;</code>
+     * <code>repeated string queue = 2;</code>
      * @param index The index of the value to return.
-     * @return The bytes of the toQueue at the given index.
+     * @return The bytes of the queue at the given index.
      */
     public com.google.protobuf.ByteString
-        getToQueueBytes(int index) {
-      return toQueue_.getByteString(index);
+        getQueueBytes(int index) {
+      return queue_.getByteString(index);
     }
 
-    public static final int FROMQUEUE_FIELD_NUMBER = 3;
-    private volatile java.lang.Object fromQueue_;
-    /**
-     * <pre>
-     * 返回消息队列
-     * </pre>
-     *
-     * <code>string fromQueue = 3;</code>
-     * @return The fromQueue.
-     */
-    @java.lang.Override
-    public java.lang.String getFromQueue() {
-      java.lang.Object ref = fromQueue_;
-      if (ref instanceof java.lang.String) {
-        return (java.lang.String) ref;
-      } else {
-        com.google.protobuf.ByteString bs = 
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        fromQueue_ = s;
-        return s;
+    public static final int QUEUEINFO_FIELD_NUMBER = 3;
+    private static final class QueueInfoDefaultEntryHolder {
+      static final com.google.protobuf.MapEntry<
+          java.lang.String, java.lang.Integer> defaultEntry =
+              com.google.protobuf.MapEntry
+              .<java.lang.String, java.lang.Integer>newDefaultInstance(
+                  com.krest.mq.core.entity.MQMessage.internal_static_MQEntity_QueueInfoEntry_descriptor, 
+                  com.google.protobuf.WireFormat.FieldType.STRING,
+                  "",
+                  com.google.protobuf.WireFormat.FieldType.INT32,
+                  0);
+    }
+    private com.google.protobuf.MapField<
+        java.lang.String, java.lang.Integer> queueInfo_;
+    private com.google.protobuf.MapField<java.lang.String, java.lang.Integer>
+    internalGetQueueInfo() {
+      if (queueInfo_ == null) {
+        return com.google.protobuf.MapField.emptyMapField(
+            QueueInfoDefaultEntryHolder.defaultEntry);
       }
+      return queueInfo_;
+    }
+
+    public int getQueueInfoCount() {
+      return internalGetQueueInfo().getMap().size();
     }
     /**
      * <pre>
-     * 返回消息队列
+     * 消费者设置 queue, 1 永久 2 临时
      * </pre>
      *
-     * <code>string fromQueue = 3;</code>
-     * @return The bytes for fromQueue.
+     * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
+     */
+
+    @java.lang.Override
+    public boolean containsQueueInfo(
+        java.lang.String key) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      return internalGetQueueInfo().getMap().containsKey(key);
+    }
+    /**
+     * Use {@link #getQueueInfoMap()} instead.
      */
     @java.lang.Override
-    public com.google.protobuf.ByteString
-        getFromQueueBytes() {
-      java.lang.Object ref = fromQueue_;
-      if (ref instanceof java.lang.String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        fromQueue_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
+    @java.lang.Deprecated
+    public java.util.Map<java.lang.String, java.lang.Integer> getQueueInfo() {
+      return getQueueInfoMap();
+    }
+    /**
+     * <pre>
+     * 消费者设置 queue, 1 永久 2 临时
+     * </pre>
+     *
+     * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
+     */
+    @java.lang.Override
+
+    public java.util.Map<java.lang.String, java.lang.Integer> getQueueInfoMap() {
+      return internalGetQueueInfo().getMap();
+    }
+    /**
+     * <pre>
+     * 消费者设置 queue, 1 永久 2 临时
+     * </pre>
+     *
+     * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
+     */
+    @java.lang.Override
+
+    public int getQueueInfoOrDefault(
+        java.lang.String key,
+        int defaultValue) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      java.util.Map<java.lang.String, java.lang.Integer> map =
+          internalGetQueueInfo().getMap();
+      return map.containsKey(key) ? map.get(key) : defaultValue;
+    }
+    /**
+     * <pre>
+     * 消费者设置 queue, 1 永久 2 临时
+     * </pre>
+     *
+     * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
+     */
+    @java.lang.Override
+
+    public int getQueueInfoOrThrow(
+        java.lang.String key) {
+      if (key == null) { throw new NullPointerException("map key"); }
+      java.util.Map<java.lang.String, java.lang.Integer> map =
+          internalGetQueueInfo().getMap();
+      if (!map.containsKey(key)) {
+        throw new java.lang.IllegalArgumentException();
       }
+      return map.get(key);
     }
 
     public static final int MSG_FIELD_NUMBER = 4;
@@ -572,7 +735,7 @@ public final class MQMessage {
     private int msgType_;
     /**
      * <pre>
-     * 消息类型 0 生产者，1 消费者
+     * 消息类型 1 生产着 2 消费者
      * </pre>
      *
      * <code>int32 msgType = 8;</code>
@@ -581,6 +744,85 @@ public final class MQMessage {
     @java.lang.Override
     public int getMsgType() {
       return msgType_;
+    }
+
+    public static final int ERRFLAG_FIELD_NUMBER = 9;
+    private boolean errFlag_;
+    /**
+     * <pre>
+     * 错误标识位
+     * </pre>
+     *
+     * <code>bool errFlag = 9;</code>
+     * @return The errFlag.
+     */
+    @java.lang.Override
+    public boolean getErrFlag() {
+      return errFlag_;
+    }
+
+    public static final int CONNTYPE_FIELD_NUMBER = 10;
+    private int connType_;
+    /**
+     * <pre>
+     * 传输方式 1 tcp, 2 udp
+     * </pre>
+     *
+     * <code>int32 connType = 10;</code>
+     * @return The connType.
+     */
+    @java.lang.Override
+    public int getConnType() {
+      return connType_;
+    }
+
+    public static final int ADDRESS_FIELD_NUMBER = 11;
+    private volatile java.lang.Object address_;
+    /**
+     * <code>string address = 11;</code>
+     * @return The address.
+     */
+    @java.lang.Override
+    public java.lang.String getAddress() {
+      java.lang.Object ref = address_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        address_ = s;
+        return s;
+      }
+    }
+    /**
+     * <code>string address = 11;</code>
+     * @return The bytes for address.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getAddressBytes() {
+      java.lang.Object ref = address_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        address_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    public static final int PORT_FIELD_NUMBER = 12;
+    private int port_;
+    /**
+     * <code>int32 port = 12;</code>
+     * @return The port.
+     */
+    @java.lang.Override
+    public int getPort() {
+      return port_;
     }
 
     private byte memoizedIsInitialized = -1;
@@ -600,12 +842,15 @@ public final class MQMessage {
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(id_)) {
         com.google.protobuf.GeneratedMessageV3.writeString(output, 1, id_);
       }
-      for (int i = 0; i < toQueue_.size(); i++) {
-        com.google.protobuf.GeneratedMessageV3.writeString(output, 2, toQueue_.getRaw(i));
+      for (int i = 0; i < queue_.size(); i++) {
+        com.google.protobuf.GeneratedMessageV3.writeString(output, 2, queue_.getRaw(i));
       }
-      if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(fromQueue_)) {
-        com.google.protobuf.GeneratedMessageV3.writeString(output, 3, fromQueue_);
-      }
+      com.google.protobuf.GeneratedMessageV3
+        .serializeStringMapTo(
+          output,
+          internalGetQueueInfo(),
+          QueueInfoDefaultEntryHolder.defaultEntry,
+          3);
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(msg_)) {
         com.google.protobuf.GeneratedMessageV3.writeString(output, 4, msg_);
       }
@@ -621,6 +866,18 @@ public final class MQMessage {
       if (msgType_ != 0) {
         output.writeInt32(8, msgType_);
       }
+      if (errFlag_ != false) {
+        output.writeBool(9, errFlag_);
+      }
+      if (connType_ != 0) {
+        output.writeInt32(10, connType_);
+      }
+      if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(address_)) {
+        com.google.protobuf.GeneratedMessageV3.writeString(output, 11, address_);
+      }
+      if (port_ != 0) {
+        output.writeInt32(12, port_);
+      }
       unknownFields.writeTo(output);
     }
 
@@ -635,14 +892,21 @@ public final class MQMessage {
       }
       {
         int dataSize = 0;
-        for (int i = 0; i < toQueue_.size(); i++) {
-          dataSize += computeStringSizeNoTag(toQueue_.getRaw(i));
+        for (int i = 0; i < queue_.size(); i++) {
+          dataSize += computeStringSizeNoTag(queue_.getRaw(i));
         }
         size += dataSize;
-        size += 1 * getToQueueList().size();
+        size += 1 * getQueueList().size();
       }
-      if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(fromQueue_)) {
-        size += com.google.protobuf.GeneratedMessageV3.computeStringSize(3, fromQueue_);
+      for (java.util.Map.Entry<java.lang.String, java.lang.Integer> entry
+           : internalGetQueueInfo().getMap().entrySet()) {
+        com.google.protobuf.MapEntry<java.lang.String, java.lang.Integer>
+        queueInfo__ = QueueInfoDefaultEntryHolder.defaultEntry.newBuilderForType()
+            .setKey(entry.getKey())
+            .setValue(entry.getValue())
+            .build();
+        size += com.google.protobuf.CodedOutputStream
+            .computeMessageSize(3, queueInfo__);
       }
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(msg_)) {
         size += com.google.protobuf.GeneratedMessageV3.computeStringSize(4, msg_);
@@ -662,6 +926,21 @@ public final class MQMessage {
         size += com.google.protobuf.CodedOutputStream
           .computeInt32Size(8, msgType_);
       }
+      if (errFlag_ != false) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(9, errFlag_);
+      }
+      if (connType_ != 0) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt32Size(10, connType_);
+      }
+      if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(address_)) {
+        size += com.google.protobuf.GeneratedMessageV3.computeStringSize(11, address_);
+      }
+      if (port_ != 0) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt32Size(12, port_);
+      }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
       return size;
@@ -679,10 +958,10 @@ public final class MQMessage {
 
       if (!getId()
           .equals(other.getId())) return false;
-      if (!getToQueueList()
-          .equals(other.getToQueueList())) return false;
-      if (!getFromQueue()
-          .equals(other.getFromQueue())) return false;
+      if (!getQueueList()
+          .equals(other.getQueueList())) return false;
+      if (!internalGetQueueInfo().equals(
+          other.internalGetQueueInfo())) return false;
       if (!getMsg()
           .equals(other.getMsg())) return false;
       if (!getDateTime()
@@ -693,6 +972,14 @@ public final class MQMessage {
           != other.getAck()) return false;
       if (getMsgType()
           != other.getMsgType()) return false;
+      if (getErrFlag()
+          != other.getErrFlag()) return false;
+      if (getConnType()
+          != other.getConnType()) return false;
+      if (!getAddress()
+          .equals(other.getAddress())) return false;
+      if (getPort()
+          != other.getPort()) return false;
       if (!unknownFields.equals(other.unknownFields)) return false;
       return true;
     }
@@ -706,12 +993,14 @@ public final class MQMessage {
       hash = (19 * hash) + getDescriptor().hashCode();
       hash = (37 * hash) + ID_FIELD_NUMBER;
       hash = (53 * hash) + getId().hashCode();
-      if (getToQueueCount() > 0) {
-        hash = (37 * hash) + TOQUEUE_FIELD_NUMBER;
-        hash = (53 * hash) + getToQueueList().hashCode();
+      if (getQueueCount() > 0) {
+        hash = (37 * hash) + QUEUE_FIELD_NUMBER;
+        hash = (53 * hash) + getQueueList().hashCode();
       }
-      hash = (37 * hash) + FROMQUEUE_FIELD_NUMBER;
-      hash = (53 * hash) + getFromQueue().hashCode();
+      if (!internalGetQueueInfo().getMap().isEmpty()) {
+        hash = (37 * hash) + QUEUEINFO_FIELD_NUMBER;
+        hash = (53 * hash) + internalGetQueueInfo().hashCode();
+      }
       hash = (37 * hash) + MSG_FIELD_NUMBER;
       hash = (53 * hash) + getMsg().hashCode();
       hash = (37 * hash) + DATETIME_FIELD_NUMBER;
@@ -724,6 +1013,15 @@ public final class MQMessage {
           getAck());
       hash = (37 * hash) + MSGTYPE_FIELD_NUMBER;
       hash = (53 * hash) + getMsgType();
+      hash = (37 * hash) + ERRFLAG_FIELD_NUMBER;
+      hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
+          getErrFlag());
+      hash = (37 * hash) + CONNTYPE_FIELD_NUMBER;
+      hash = (53 * hash) + getConnType();
+      hash = (37 * hash) + ADDRESS_FIELD_NUMBER;
+      hash = (53 * hash) + getAddress().hashCode();
+      hash = (37 * hash) + PORT_FIELD_NUMBER;
+      hash = (53 * hash) + getPort();
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
       return hash;
@@ -831,6 +1129,28 @@ public final class MQMessage {
         return com.krest.mq.core.entity.MQMessage.internal_static_MQEntity_descriptor;
       }
 
+      @SuppressWarnings({"rawtypes"})
+      protected com.google.protobuf.MapField internalGetMapField(
+          int number) {
+        switch (number) {
+          case 3:
+            return internalGetQueueInfo();
+          default:
+            throw new RuntimeException(
+                "Invalid map field number: " + number);
+        }
+      }
+      @SuppressWarnings({"rawtypes"})
+      protected com.google.protobuf.MapField internalGetMutableMapField(
+          int number) {
+        switch (number) {
+          case 3:
+            return internalGetMutableQueueInfo();
+          default:
+            throw new RuntimeException(
+                "Invalid map field number: " + number);
+        }
+      }
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
@@ -859,10 +1179,9 @@ public final class MQMessage {
         super.clear();
         id_ = "";
 
-        toQueue_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+        queue_ = com.google.protobuf.LazyStringArrayList.EMPTY;
         bitField0_ = (bitField0_ & ~0x00000001);
-        fromQueue_ = "";
-
+        internalGetMutableQueueInfo().clear();
         msg_ = "";
 
         dateTime_ = "";
@@ -872,6 +1191,14 @@ public final class MQMessage {
         ack_ = false;
 
         msgType_ = 0;
+
+        errFlag_ = false;
+
+        connType_ = 0;
+
+        address_ = "";
+
+        port_ = 0;
 
         return this;
       }
@@ -902,16 +1229,21 @@ public final class MQMessage {
         int from_bitField0_ = bitField0_;
         result.id_ = id_;
         if (((bitField0_ & 0x00000001) != 0)) {
-          toQueue_ = toQueue_.getUnmodifiableView();
+          queue_ = queue_.getUnmodifiableView();
           bitField0_ = (bitField0_ & ~0x00000001);
         }
-        result.toQueue_ = toQueue_;
-        result.fromQueue_ = fromQueue_;
+        result.queue_ = queue_;
+        result.queueInfo_ = internalGetQueueInfo();
+        result.queueInfo_.makeImmutable();
         result.msg_ = msg_;
         result.dateTime_ = dateTime_;
         result.isAck_ = isAck_;
         result.ack_ = ack_;
         result.msgType_ = msgType_;
+        result.errFlag_ = errFlag_;
+        result.connType_ = connType_;
+        result.address_ = address_;
+        result.port_ = port_;
         onBuilt();
         return result;
       }
@@ -964,20 +1296,18 @@ public final class MQMessage {
           id_ = other.id_;
           onChanged();
         }
-        if (!other.toQueue_.isEmpty()) {
-          if (toQueue_.isEmpty()) {
-            toQueue_ = other.toQueue_;
+        if (!other.queue_.isEmpty()) {
+          if (queue_.isEmpty()) {
+            queue_ = other.queue_;
             bitField0_ = (bitField0_ & ~0x00000001);
           } else {
-            ensureToQueueIsMutable();
-            toQueue_.addAll(other.toQueue_);
+            ensureQueueIsMutable();
+            queue_.addAll(other.queue_);
           }
           onChanged();
         }
-        if (!other.getFromQueue().isEmpty()) {
-          fromQueue_ = other.fromQueue_;
-          onChanged();
-        }
+        internalGetMutableQueueInfo().mergeFrom(
+            other.internalGetQueueInfo());
         if (!other.getMsg().isEmpty()) {
           msg_ = other.msg_;
           onChanged();
@@ -994,6 +1324,19 @@ public final class MQMessage {
         }
         if (other.getMsgType() != 0) {
           setMsgType(other.getMsgType());
+        }
+        if (other.getErrFlag() != false) {
+          setErrFlag(other.getErrFlag());
+        }
+        if (other.getConnType() != 0) {
+          setConnType(other.getConnType());
+        }
+        if (!other.getAddress().isEmpty()) {
+          address_ = other.address_;
+          onChanged();
+        }
+        if (other.getPort() != 0) {
+          setPort(other.getPort());
         }
         this.mergeUnknownFields(other.unknownFields);
         onChanged();
@@ -1121,10 +1464,10 @@ public final class MQMessage {
         return this;
       }
 
-      private com.google.protobuf.LazyStringList toQueue_ = com.google.protobuf.LazyStringArrayList.EMPTY;
-      private void ensureToQueueIsMutable() {
+      private com.google.protobuf.LazyStringList queue_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+      private void ensureQueueIsMutable() {
         if (!((bitField0_ & 0x00000001) != 0)) {
-          toQueue_ = new com.google.protobuf.LazyStringArrayList(toQueue_);
+          queue_ = new com.google.protobuf.LazyStringArrayList(queue_);
           bitField0_ |= 0x00000001;
          }
       }
@@ -1133,66 +1476,66 @@ public final class MQMessage {
        * 插入消息队列
        * </pre>
        *
-       * <code>repeated string toQueue = 2;</code>
-       * @return A list containing the toQueue.
+       * <code>repeated string queue = 2;</code>
+       * @return A list containing the queue.
        */
       public com.google.protobuf.ProtocolStringList
-          getToQueueList() {
-        return toQueue_.getUnmodifiableView();
+          getQueueList() {
+        return queue_.getUnmodifiableView();
       }
       /**
        * <pre>
        * 插入消息队列
        * </pre>
        *
-       * <code>repeated string toQueue = 2;</code>
-       * @return The count of toQueue.
+       * <code>repeated string queue = 2;</code>
+       * @return The count of queue.
        */
-      public int getToQueueCount() {
-        return toQueue_.size();
+      public int getQueueCount() {
+        return queue_.size();
       }
       /**
        * <pre>
        * 插入消息队列
        * </pre>
        *
-       * <code>repeated string toQueue = 2;</code>
+       * <code>repeated string queue = 2;</code>
        * @param index The index of the element to return.
-       * @return The toQueue at the given index.
+       * @return The queue at the given index.
        */
-      public java.lang.String getToQueue(int index) {
-        return toQueue_.get(index);
+      public java.lang.String getQueue(int index) {
+        return queue_.get(index);
       }
       /**
        * <pre>
        * 插入消息队列
        * </pre>
        *
-       * <code>repeated string toQueue = 2;</code>
+       * <code>repeated string queue = 2;</code>
        * @param index The index of the value to return.
-       * @return The bytes of the toQueue at the given index.
+       * @return The bytes of the queue at the given index.
        */
       public com.google.protobuf.ByteString
-          getToQueueBytes(int index) {
-        return toQueue_.getByteString(index);
+          getQueueBytes(int index) {
+        return queue_.getByteString(index);
       }
       /**
        * <pre>
        * 插入消息队列
        * </pre>
        *
-       * <code>repeated string toQueue = 2;</code>
+       * <code>repeated string queue = 2;</code>
        * @param index The index to set the value at.
-       * @param value The toQueue to set.
+       * @param value The queue to set.
        * @return This builder for chaining.
        */
-      public Builder setToQueue(
+      public Builder setQueue(
           int index, java.lang.String value) {
         if (value == null) {
     throw new NullPointerException();
   }
-  ensureToQueueIsMutable();
-        toQueue_.set(index, value);
+  ensureQueueIsMutable();
+        queue_.set(index, value);
         onChanged();
         return this;
       }
@@ -1201,17 +1544,17 @@ public final class MQMessage {
        * 插入消息队列
        * </pre>
        *
-       * <code>repeated string toQueue = 2;</code>
-       * @param value The toQueue to add.
+       * <code>repeated string queue = 2;</code>
+       * @param value The queue to add.
        * @return This builder for chaining.
        */
-      public Builder addToQueue(
+      public Builder addQueue(
           java.lang.String value) {
         if (value == null) {
     throw new NullPointerException();
   }
-  ensureToQueueIsMutable();
-        toQueue_.add(value);
+  ensureQueueIsMutable();
+        queue_.add(value);
         onChanged();
         return this;
       }
@@ -1220,15 +1563,15 @@ public final class MQMessage {
        * 插入消息队列
        * </pre>
        *
-       * <code>repeated string toQueue = 2;</code>
-       * @param values The toQueue to add.
+       * <code>repeated string queue = 2;</code>
+       * @param values The queue to add.
        * @return This builder for chaining.
        */
-      public Builder addAllToQueue(
+      public Builder addAllQueue(
           java.lang.Iterable<java.lang.String> values) {
-        ensureToQueueIsMutable();
+        ensureQueueIsMutable();
         com.google.protobuf.AbstractMessageLite.Builder.addAll(
-            values, toQueue_);
+            values, queue_);
         onChanged();
         return this;
       }
@@ -1237,11 +1580,11 @@ public final class MQMessage {
        * 插入消息队列
        * </pre>
        *
-       * <code>repeated string toQueue = 2;</code>
+       * <code>repeated string queue = 2;</code>
        * @return This builder for chaining.
        */
-      public Builder clearToQueue() {
-        toQueue_ = com.google.protobuf.LazyStringArrayList.EMPTY;
+      public Builder clearQueue() {
+        queue_ = com.google.protobuf.LazyStringArrayList.EMPTY;
         bitField0_ = (bitField0_ & ~0x00000001);
         onChanged();
         return this;
@@ -1251,115 +1594,175 @@ public final class MQMessage {
        * 插入消息队列
        * </pre>
        *
-       * <code>repeated string toQueue = 2;</code>
-       * @param value The bytes of the toQueue to add.
+       * <code>repeated string queue = 2;</code>
+       * @param value The bytes of the queue to add.
        * @return This builder for chaining.
        */
-      public Builder addToQueueBytes(
+      public Builder addQueueBytes(
           com.google.protobuf.ByteString value) {
         if (value == null) {
     throw new NullPointerException();
   }
   checkByteStringIsUtf8(value);
-        ensureToQueueIsMutable();
-        toQueue_.add(value);
+        ensureQueueIsMutable();
+        queue_.add(value);
         onChanged();
         return this;
       }
 
-      private java.lang.Object fromQueue_ = "";
-      /**
-       * <pre>
-       * 返回消息队列
-       * </pre>
-       *
-       * <code>string fromQueue = 3;</code>
-       * @return The fromQueue.
-       */
-      public java.lang.String getFromQueue() {
-        java.lang.Object ref = fromQueue_;
-        if (!(ref instanceof java.lang.String)) {
-          com.google.protobuf.ByteString bs =
-              (com.google.protobuf.ByteString) ref;
-          java.lang.String s = bs.toStringUtf8();
-          fromQueue_ = s;
-          return s;
-        } else {
-          return (java.lang.String) ref;
+      private com.google.protobuf.MapField<
+          java.lang.String, java.lang.Integer> queueInfo_;
+      private com.google.protobuf.MapField<java.lang.String, java.lang.Integer>
+      internalGetQueueInfo() {
+        if (queueInfo_ == null) {
+          return com.google.protobuf.MapField.emptyMapField(
+              QueueInfoDefaultEntryHolder.defaultEntry);
         }
+        return queueInfo_;
+      }
+      private com.google.protobuf.MapField<java.lang.String, java.lang.Integer>
+      internalGetMutableQueueInfo() {
+        onChanged();;
+        if (queueInfo_ == null) {
+          queueInfo_ = com.google.protobuf.MapField.newMapField(
+              QueueInfoDefaultEntryHolder.defaultEntry);
+        }
+        if (!queueInfo_.isMutable()) {
+          queueInfo_ = queueInfo_.copy();
+        }
+        return queueInfo_;
+      }
+
+      public int getQueueInfoCount() {
+        return internalGetQueueInfo().getMap().size();
       }
       /**
        * <pre>
-       * 返回消息队列
+       * 消费者设置 queue, 1 永久 2 临时
        * </pre>
        *
-       * <code>string fromQueue = 3;</code>
-       * @return The bytes for fromQueue.
+       * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
        */
-      public com.google.protobuf.ByteString
-          getFromQueueBytes() {
-        java.lang.Object ref = fromQueue_;
-        if (ref instanceof String) {
-          com.google.protobuf.ByteString b = 
-              com.google.protobuf.ByteString.copyFromUtf8(
-                  (java.lang.String) ref);
-          fromQueue_ = b;
-          return b;
-        } else {
-          return (com.google.protobuf.ByteString) ref;
-        }
+
+      @java.lang.Override
+      public boolean containsQueueInfo(
+          java.lang.String key) {
+        if (key == null) { throw new NullPointerException("map key"); }
+        return internalGetQueueInfo().getMap().containsKey(key);
+      }
+      /**
+       * Use {@link #getQueueInfoMap()} instead.
+       */
+      @java.lang.Override
+      @java.lang.Deprecated
+      public java.util.Map<java.lang.String, java.lang.Integer> getQueueInfo() {
+        return getQueueInfoMap();
       }
       /**
        * <pre>
-       * 返回消息队列
+       * 消费者设置 queue, 1 永久 2 临时
        * </pre>
        *
-       * <code>string fromQueue = 3;</code>
-       * @param value The fromQueue to set.
-       * @return This builder for chaining.
+       * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
        */
-      public Builder setFromQueue(
-          java.lang.String value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  
-        fromQueue_ = value;
-        onChanged();
+      @java.lang.Override
+
+      public java.util.Map<java.lang.String, java.lang.Integer> getQueueInfoMap() {
+        return internalGetQueueInfo().getMap();
+      }
+      /**
+       * <pre>
+       * 消费者设置 queue, 1 永久 2 临时
+       * </pre>
+       *
+       * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
+       */
+      @java.lang.Override
+
+      public int getQueueInfoOrDefault(
+          java.lang.String key,
+          int defaultValue) {
+        if (key == null) { throw new NullPointerException("map key"); }
+        java.util.Map<java.lang.String, java.lang.Integer> map =
+            internalGetQueueInfo().getMap();
+        return map.containsKey(key) ? map.get(key) : defaultValue;
+      }
+      /**
+       * <pre>
+       * 消费者设置 queue, 1 永久 2 临时
+       * </pre>
+       *
+       * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
+       */
+      @java.lang.Override
+
+      public int getQueueInfoOrThrow(
+          java.lang.String key) {
+        if (key == null) { throw new NullPointerException("map key"); }
+        java.util.Map<java.lang.String, java.lang.Integer> map =
+            internalGetQueueInfo().getMap();
+        if (!map.containsKey(key)) {
+          throw new java.lang.IllegalArgumentException();
+        }
+        return map.get(key);
+      }
+
+      public Builder clearQueueInfo() {
+        internalGetMutableQueueInfo().getMutableMap()
+            .clear();
         return this;
       }
       /**
        * <pre>
-       * 返回消息队列
+       * 消费者设置 queue, 1 永久 2 临时
        * </pre>
        *
-       * <code>string fromQueue = 3;</code>
-       * @return This builder for chaining.
+       * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
        */
-      public Builder clearFromQueue() {
+
+      public Builder removeQueueInfo(
+          java.lang.String key) {
+        if (key == null) { throw new NullPointerException("map key"); }
+        internalGetMutableQueueInfo().getMutableMap()
+            .remove(key);
+        return this;
+      }
+      /**
+       * Use alternate mutation accessors instead.
+       */
+      @java.lang.Deprecated
+      public java.util.Map<java.lang.String, java.lang.Integer>
+      getMutableQueueInfo() {
+        return internalGetMutableQueueInfo().getMutableMap();
+      }
+      /**
+       * <pre>
+       * 消费者设置 queue, 1 永久 2 临时
+       * </pre>
+       *
+       * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
+       */
+      public Builder putQueueInfo(
+          java.lang.String key,
+          int value) {
+        if (key == null) { throw new NullPointerException("map key"); }
         
-        fromQueue_ = getDefaultInstance().getFromQueue();
-        onChanged();
+        internalGetMutableQueueInfo().getMutableMap()
+            .put(key, value);
         return this;
       }
       /**
        * <pre>
-       * 返回消息队列
+       * 消费者设置 queue, 1 永久 2 临时
        * </pre>
        *
-       * <code>string fromQueue = 3;</code>
-       * @param value The bytes for fromQueue to set.
-       * @return This builder for chaining.
+       * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
        */
-      public Builder setFromQueueBytes(
-          com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  checkByteStringIsUtf8(value);
-        
-        fromQueue_ = value;
-        onChanged();
+
+      public Builder putAllQueueInfo(
+          java.util.Map<java.lang.String, java.lang.Integer> values) {
+        internalGetMutableQueueInfo().getMutableMap()
+            .putAll(values);
         return this;
       }
 
@@ -1644,7 +2047,7 @@ public final class MQMessage {
       private int msgType_ ;
       /**
        * <pre>
-       * 消息类型 0 生产者，1 消费者
+       * 消息类型 1 生产着 2 消费者
        * </pre>
        *
        * <code>int32 msgType = 8;</code>
@@ -1656,7 +2059,7 @@ public final class MQMessage {
       }
       /**
        * <pre>
-       * 消息类型 0 生产者，1 消费者
+       * 消息类型 1 生产着 2 消费者
        * </pre>
        *
        * <code>int32 msgType = 8;</code>
@@ -1671,7 +2074,7 @@ public final class MQMessage {
       }
       /**
        * <pre>
-       * 消息类型 0 生产者，1 消费者
+       * 消息类型 1 生产着 2 消费者
        * </pre>
        *
        * <code>int32 msgType = 8;</code>
@@ -1680,6 +2083,199 @@ public final class MQMessage {
       public Builder clearMsgType() {
         
         msgType_ = 0;
+        onChanged();
+        return this;
+      }
+
+      private boolean errFlag_ ;
+      /**
+       * <pre>
+       * 错误标识位
+       * </pre>
+       *
+       * <code>bool errFlag = 9;</code>
+       * @return The errFlag.
+       */
+      @java.lang.Override
+      public boolean getErrFlag() {
+        return errFlag_;
+      }
+      /**
+       * <pre>
+       * 错误标识位
+       * </pre>
+       *
+       * <code>bool errFlag = 9;</code>
+       * @param value The errFlag to set.
+       * @return This builder for chaining.
+       */
+      public Builder setErrFlag(boolean value) {
+        
+        errFlag_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * 错误标识位
+       * </pre>
+       *
+       * <code>bool errFlag = 9;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearErrFlag() {
+        
+        errFlag_ = false;
+        onChanged();
+        return this;
+      }
+
+      private int connType_ ;
+      /**
+       * <pre>
+       * 传输方式 1 tcp, 2 udp
+       * </pre>
+       *
+       * <code>int32 connType = 10;</code>
+       * @return The connType.
+       */
+      @java.lang.Override
+      public int getConnType() {
+        return connType_;
+      }
+      /**
+       * <pre>
+       * 传输方式 1 tcp, 2 udp
+       * </pre>
+       *
+       * <code>int32 connType = 10;</code>
+       * @param value The connType to set.
+       * @return This builder for chaining.
+       */
+      public Builder setConnType(int value) {
+        
+        connType_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * 传输方式 1 tcp, 2 udp
+       * </pre>
+       *
+       * <code>int32 connType = 10;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearConnType() {
+        
+        connType_ = 0;
+        onChanged();
+        return this;
+      }
+
+      private java.lang.Object address_ = "";
+      /**
+       * <code>string address = 11;</code>
+       * @return The address.
+       */
+      public java.lang.String getAddress() {
+        java.lang.Object ref = address_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          address_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>string address = 11;</code>
+       * @return The bytes for address.
+       */
+      public com.google.protobuf.ByteString
+          getAddressBytes() {
+        java.lang.Object ref = address_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          address_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>string address = 11;</code>
+       * @param value The address to set.
+       * @return This builder for chaining.
+       */
+      public Builder setAddress(
+          java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  
+        address_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string address = 11;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearAddress() {
+        
+        address_ = getDefaultInstance().getAddress();
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string address = 11;</code>
+       * @param value The bytes for address to set.
+       * @return This builder for chaining.
+       */
+      public Builder setAddressBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  checkByteStringIsUtf8(value);
+        
+        address_ = value;
+        onChanged();
+        return this;
+      }
+
+      private int port_ ;
+      /**
+       * <code>int32 port = 12;</code>
+       * @return The port.
+       */
+      @java.lang.Override
+      public int getPort() {
+        return port_;
+      }
+      /**
+       * <code>int32 port = 12;</code>
+       * @param value The port to set.
+       * @return This builder for chaining.
+       */
+      public Builder setPort(int value) {
+        
+        port_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>int32 port = 12;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearPort() {
+        
+        port_ = 0;
         onChanged();
         return this;
       }
@@ -1741,6 +2337,11 @@ public final class MQMessage {
   private static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internal_static_MQEntity_fieldAccessorTable;
+  private static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_MQEntity_QueueInfoEntry_descriptor;
+  private static final 
+    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
+      internal_static_MQEntity_QueueInfoEntry_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -1750,12 +2351,15 @@ public final class MQMessage {
       descriptor;
   static {
     java.lang.String[] descriptorData = {
-      "\n\rMessage.proto\"\206\001\n\010MQEntity\022\n\n\002id\030\001 \001(\t" +
-      "\022\017\n\007toQueue\030\002 \003(\t\022\021\n\tfromQueue\030\003 \001(\t\022\013\n\003" +
-      "msg\030\004 \001(\t\022\020\n\010dateTime\030\005 \001(\t\022\r\n\005isAck\030\006 \001" +
-      "(\010\022\013\n\003ack\030\007 \001(\010\022\017\n\007msgType\030\010 \001(\005B\'\n\030com." +
-      "krest.mq.core.entityB\tMQMessageH\001b\006proto" +
-      "3"
+      "\n\rMessage.proto\"\222\002\n\010MQEntity\022\n\n\002id\030\001 \001(\t" +
+      "\022\r\n\005queue\030\002 \003(\t\022+\n\tqueueInfo\030\003 \003(\0132\030.MQE" +
+      "ntity.QueueInfoEntry\022\013\n\003msg\030\004 \001(\t\022\020\n\010dat" +
+      "eTime\030\005 \001(\t\022\r\n\005isAck\030\006 \001(\010\022\013\n\003ack\030\007 \001(\010\022" +
+      "\017\n\007msgType\030\010 \001(\005\022\017\n\007errFlag\030\t \001(\010\022\020\n\010con" +
+      "nType\030\n \001(\005\022\017\n\007address\030\013 \001(\t\022\014\n\004port\030\014 \001" +
+      "(\005\0320\n\016QueueInfoEntry\022\013\n\003key\030\001 \001(\t\022\r\n\005val" +
+      "ue\030\002 \001(\005:\0028\001B\'\n\030com.krest.mq.core.entity" +
+      "B\tMQMessageH\001b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -1766,7 +2370,13 @@ public final class MQMessage {
     internal_static_MQEntity_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_MQEntity_descriptor,
-        new java.lang.String[] { "Id", "ToQueue", "FromQueue", "Msg", "DateTime", "IsAck", "Ack", "MsgType", });
+        new java.lang.String[] { "Id", "Queue", "QueueInfo", "Msg", "DateTime", "IsAck", "Ack", "MsgType", "ErrFlag", "ConnType", "Address", "Port", });
+    internal_static_MQEntity_QueueInfoEntry_descriptor =
+      internal_static_MQEntity_descriptor.getNestedTypes().get(0);
+    internal_static_MQEntity_QueueInfoEntry_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
+        internal_static_MQEntity_QueueInfoEntry_descriptor,
+        new java.lang.String[] { "Key", "Value", });
   }
 
   // @@protoc_insertion_point(outer_class_scope)

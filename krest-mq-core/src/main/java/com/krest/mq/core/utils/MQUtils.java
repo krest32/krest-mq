@@ -1,6 +1,5 @@
 package com.krest.mq.core.utils;
 
-import com.krest.mq.core.entity.MQMessage;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;

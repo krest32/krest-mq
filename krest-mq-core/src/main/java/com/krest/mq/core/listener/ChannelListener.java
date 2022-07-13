@@ -1,5 +1,8 @@
 package com.krest.mq.core.listener;
 
-public interface ChannelInactiveListener {
+public interface ChannelListener {
+
     void onInactive();
+
+
 }
