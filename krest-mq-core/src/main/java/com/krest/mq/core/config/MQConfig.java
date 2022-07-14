@@ -7,11 +7,11 @@ import lombok.Data;
 @Data
 @Builder
 public class MQConfig {
-    boolean pushMode = true;
+    boolean pushMode;
     String remoteAddress;
-    ConnType connType = ConnType.TCP;
+    ConnType connType;
     int remotePort;
     int port;
-    int tryTimes = 3;
+    int tryTimes;
 
 }

@@ -17,7 +17,7 @@ public class KrestMQAutoConfiguration {
         this.configProperties = configProperties;
     }
 
-    private KrestMQService krestMQService = null;
+    private KrestMQService krestMQService;
 
     @Bean
     @ConditionalOnMissingBean

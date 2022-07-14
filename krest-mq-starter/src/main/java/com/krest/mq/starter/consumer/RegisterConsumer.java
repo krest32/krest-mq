@@ -1,5 +1,6 @@
 package com.krest.mq.starter.consumer;
 
+import com.krest.mq.core.entity.QueueType;
 import com.krest.mq.starter.anno.KrestConsumer;
 import com.krest.mq.starter.anno.KrestMQListener;
 import com.krest.mq.starter.properties.KrestMQProperties;
@@ -22,8 +23,6 @@ public class RegisterConsumer implements BeanPostProcessor {
     @Autowired
     KrestMQProperties mqProperties;
 
-    Map<String, Method> queueMethod = new HashMap<>();
-    Set<String> queues = new HashSet<>();
 
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
@@ -33,12 +32,18 @@ public class RegisterConsumer implements BeanPostProcessor {
             // 获取方法有条件Listener的注解信息
             Class<?> beanClass = bean.getClass();
             Method[] declaredMethods = beanClass.getDeclaredMethods();
+
+            Map<String, Method> queueMethod = new HashMap<>();
+            Set<String> queues = new HashSet<>();
+            Map<String, Integer> queueInfo = new HashMap<>();
             for (Method curMethod : declaredMethods) {
                 if (curMethod.isAnnotationPresent(KrestMQListener.class)) {
                     KrestMQListener listener = curMethod.getAnnotation(KrestMQListener.class);
-                    String queue = listener.queue();
-                    if (queues.add(queue)) {
-                        queueMethod.put(queue, curMethod);
+                    String queueName = listener.queue();
+                    QueueType queueType = listener.queueType();
+                    queueInfo.put(queueName, queueType.equals(QueueType.PERMANENT) ? 1 : 2);
+                    if (queues.add(queueName)) {
+                        queueMethod.put(queueName, curMethod);
                     } else {
                         log.error("重复的listener注解");
                     }
@@ -47,11 +52,11 @@ public class RegisterConsumer implements BeanPostProcessor {
 
             // 新建客户端
             MQConsumerRunnable runnable = new MQConsumerRunnable(
-                    mqProperties.getHost(), mqProperties.getPort(), queues, bean
+                    mqProperties.getHost(), mqProperties.getPort(), queueInfo, bean
             );
+
             Thread thread = new Thread(runnable);
             thread.start();
-
             // 建立 consumer 客户端
 
         }

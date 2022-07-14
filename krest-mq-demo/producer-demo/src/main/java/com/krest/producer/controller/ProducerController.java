@@ -15,9 +15,10 @@ public class ProducerController {
     @Autowired
     MQTCPClient mqClient;
 
-    @GetMapping("send/{queue}/{msg}")
+    @GetMapping("send/{queue}/{msg}/{transfer}")
     public String sendMsg(@PathVariable String queue,
-                          @PathVariable String msg) throws InterruptedException {
+                          @PathVariable String msg,
+                          @PathVariable String transfer) throws InterruptedException {
 
         MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
         MQMessage.MQEntity request = builder.setId(UUID.randomUUID().toString())
@@ -25,6 +26,7 @@ public class ProducerController {
                 .setMsgType(1)
                 .addQueue(queue)
                 .setMsg(msg)
+                .setTransferType(Integer.valueOf(transfer))
                 .setDateTime(DateUtils.getNowDate())
                 .build();
         mqClient.sendMsg(request);

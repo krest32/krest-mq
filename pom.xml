@@ -8,12 +8,14 @@
     <artifactId>krest-mq</artifactId>
     <packaging>pom</packaging>
     <version>1.0-bate</version>
+
     <modules>
         <module>krest-mq-core</module>
         <module>krest-mq-starter</module>
         <module>krest-mq-demo</module>
         <module>krest-mq-admin</module>
-        <module>krest-mq-demo/consumer-demo</module>
+        <module>krest-mq-demo/consumer1-demo</module>
+        <module>krest-mq-demo/consumer2-demo</module>
         <module>krest-mq-demo/producer-demo</module>
         <module>krest-file</module>
     </modules>
@@ -22,6 +24,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-parent</artifactId>
         <version>2.2.6.RELEASE</version>
+        <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
     <properties>
@@ -37,19 +40,19 @@
         <jboss-marshalling.version>2.0.9.Final</jboss-marshalling.version>
         <reflectasm.version>1.11.0</reflectasm.version>
         <junit.version>4.12</junit.version>
-
         <lombok.version>1.18.22</lombok.version>
         <commons-pools.version>2.7.0</commons-pools.version>
+        <fastjson.version>1.2.83</fastjson.version>
 
     </properties>
 
 
     <dependencyManagement>
         <dependencies>
+
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-web</artifactId>
-                <version>2.2.6.RELEASE</version>
             </dependency>
 
             <dependency>
@@ -99,6 +102,11 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-pool2</artifactId>
                 <version>${commons-pools.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>fastjson</artifactId>
+                <version>${fastjson.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

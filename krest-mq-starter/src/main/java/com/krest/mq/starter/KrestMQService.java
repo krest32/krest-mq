@@ -1,9 +1,11 @@
 package com.krest.mq.starter;
 
+import com.krest.mq.core.client.MQClient;
 import com.krest.mq.core.client.MQTCPClient;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.listener.ChannelListener;
 import com.krest.mq.core.utils.DateUtils;
+import com.krest.mq.starter.producer.ProducerChannelInitializer;
 import com.krest.mq.starter.producer.ProducerHandlerAdapter;
 import com.krest.mq.starter.properties.KrestMQProperties;
 
@@ -27,11 +29,14 @@ public class KrestMQService {
                 .addQueue("default")
                 .build();
 
-        MQTCPClient client = new MQTCPClient(config.getHost(), config.getPort());
-        ChannelListener inactiveListener = client.getInactiveListener();
+        System.out.println(config.getHost());
+        MQTCPClient producerClient = new MQTCPClient(config.getHost(), config.getPort());
+//        MQTCPClient client = new MQTCPClient("localhost", 9001);
+        ChannelListener inactiveListener = producerClient.getInactiveListener();
         ProducerHandlerAdapter handlerAdapter = new ProducerHandlerAdapter(inactiveListener);
-        client.connect(handlerAdapter);
-        return client;
+//        producerClient.connect(handlerAdapter);
+        producerClient.connect(new ProducerChannelInitializer(inactiveListener));
+        return producerClient;
     }
 
 }

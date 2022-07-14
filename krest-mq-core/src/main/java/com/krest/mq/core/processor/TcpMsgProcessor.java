@@ -1,15 +1,12 @@
 package com.krest.mq.core.processor;
 
 import com.google.protobuf.ProtocolStringList;
-import com.krest.file.handler.FileHandler;
 import com.krest.mq.core.cache.LocalCache;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.entity.QueueInfo;
 import com.krest.mq.core.entity.QueueType;
+import com.krest.mq.core.runnable.*;
 import com.krest.mq.core.utils.MsgResolver;
-import com.krest.mq.core.runnable.ExecutorFactory;
-import com.krest.mq.core.runnable.TcpSendMsgRunnable;
-import com.krest.mq.core.runnable.ThreadPoolConfig;
 import com.krest.mq.core.utils.DateUtils;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -28,7 +25,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Slf4j
 public class TcpMsgProcessor {
 
-    static ThreadPoolExecutor sendMsgExecutor = ExecutorFactory.threadPoolExecutor(new ThreadPoolConfig());
+    static ThreadPoolExecutor TcpExecutor = ExecutorFactory.threadPoolExecutor(new ThreadPoolConfig());
 
     static MQMessage.MQEntity.Builder entityBuilder = MQMessage.MQEntity.newBuilder();
 
@@ -87,20 +84,6 @@ public class TcpMsgProcessor {
     }
 
 
-    /**
-     * 消息同步
-     * 1. 消息同步本地
-     */
-    public static boolean synchMsg(MQMessage.MQEntity entity) {
-        return FileHandler.saveData(entity.getId(), entity.toByteArray());
-    }
-
-
-    public static boolean synchMsg(DatagramPacket datagramPacket) {
-        return synchMsg(MsgResolver.parseUdpDatagramPacket(datagramPacket));
-    }
-
-
     public static void msgCenter(ChannelHandlerContext ctx, DatagramPacket datagramPacket) {
         MQMessage.MQEntity entity = MsgResolver.parseUdpDatagramPacket(datagramPacket);
         if (null == LocalCache.udpChannel) {
@@ -118,12 +101,10 @@ public class TcpMsgProcessor {
     private static void producer(ChannelHandlerContext ctx, MQMessage.MQEntity mqEntity) {
         // 整理消息一次放入到每个消息队列中
         ProtocolStringList queueNames = mqEntity.getQueueList();
-
         if (!queueNames.isEmpty()) {
             // 将消息放入到队列当中，已经对于 队列不存在的情况作处理，此处不作任何处理
             for (String queueName : queueNames) {
-                BlockingQueue<MQMessage.MQEntity> queue = LocalCache.queueMap.get(queueName);
-                queue.offer(mqEntity);
+                TcpExecutor.execute(new PutMsgRunnable(queueName, mqEntity));
             }
         }
 
@@ -137,7 +118,6 @@ public class TcpMsgProcessor {
 
             System.out.println("返回确认消息");
             System.out.println(response);
-
             ctx.writeAndFlush(response);
         }
     }
@@ -167,23 +147,25 @@ public class TcpMsgProcessor {
             String queueName = queueInfo.getKey();
             queueNameList.add(queueName);
             int val = queueInfo.getValue();
-
             // 增加缓存设置
-            List<Channel> channels = LocalCache.ctxMap.getOrDefault(queueName, new ArrayList<>());
+            List<Channel> channels = LocalCache.queueCtxListMap.getOrDefault(queueName, new ArrayList<>());
             channels.add(ctx.channel());
-            LocalCache.ctxMap.put(queueName, channels);
+            LocalCache.queueCtxListMap.put(queueName, channels);
 
-            // 新建 queue 同时启动线程池发送信息
             if (LocalCache.queueMap.get(queueName) == null) {
-                LocalCache.queueInfoMap.put(queueName, new QueueInfo(queueName,
-                        request.getMsgType() == 1 ? QueueType.PERMANENT : QueueType.TEMPORARY));
+                LocalCache.queueInfoMap.put(queueName, new QueueInfo(queueName, val == 1 ? QueueType.PERMANENT : QueueType.TEMPORARY));
                 // 如果不存在队列 就进行创建queue
                 LocalCache.queueMap.put(queueName, new LinkedBlockingQueue<>());
                 // 开启推送模式
-                sendMsgExecutor.execute(new TcpSendMsgRunnable(queueName));
+                TcpExecutor.execute(new TcpSendMsgRunnable(queueName));
+                log.info("队列 [{}] 开始推送", queueName);
+            } else {
+                log.info("队列 [ {} ] 已经存在", queueName);
             }
         }
-        LocalCache.ctxQueueMap.put(ctx.channel(), queueNameList);
+        LocalCache.ctxQueueListMap.put(ctx.channel(), queueNameList);
+        // 异步 开启同步任务
+        TcpExecutor.execute(new SynchCacheRunnable());
     }
 }
 

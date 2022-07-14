@@ -224,11 +224,19 @@ public final class MQMessage {
     int getConnType();
 
     /**
+     * <pre>
+     * 废弃参数，待删除
+     * </pre>
+     *
      * <code>string address = 11;</code>
      * @return The address.
      */
     java.lang.String getAddress();
     /**
+     * <pre>
+     * 废弃参数，待删除
+     * </pre>
+     *
      * <code>string address = 11;</code>
      * @return The bytes for address.
      */
@@ -240,6 +248,16 @@ public final class MQMessage {
      * @return The port.
      */
     int getPort();
+
+    /**
+     * <pre>
+     * 消息的发送方式 1, 单点 2，广播
+     * </pre>
+     *
+     * <code>int32 transferType = 13;</code>
+     * @return The transferType.
+     */
+    int getTransferType();
   }
   /**
    * Protobuf type {@code MQEntity}
@@ -366,6 +384,11 @@ public final class MQMessage {
             case 96: {
 
               port_ = input.readInt32();
+              break;
+            }
+            case 104: {
+
+              transferType_ = input.readInt32();
               break;
             }
             default: {
@@ -779,6 +802,10 @@ public final class MQMessage {
     public static final int ADDRESS_FIELD_NUMBER = 11;
     private volatile java.lang.Object address_;
     /**
+     * <pre>
+     * 废弃参数，待删除
+     * </pre>
+     *
      * <code>string address = 11;</code>
      * @return The address.
      */
@@ -796,6 +823,10 @@ public final class MQMessage {
       }
     }
     /**
+     * <pre>
+     * 废弃参数，待删除
+     * </pre>
+     *
      * <code>string address = 11;</code>
      * @return The bytes for address.
      */
@@ -823,6 +854,21 @@ public final class MQMessage {
     @java.lang.Override
     public int getPort() {
       return port_;
+    }
+
+    public static final int TRANSFERTYPE_FIELD_NUMBER = 13;
+    private int transferType_;
+    /**
+     * <pre>
+     * 消息的发送方式 1, 单点 2，广播
+     * </pre>
+     *
+     * <code>int32 transferType = 13;</code>
+     * @return The transferType.
+     */
+    @java.lang.Override
+    public int getTransferType() {
+      return transferType_;
     }
 
     private byte memoizedIsInitialized = -1;
@@ -877,6 +923,9 @@ public final class MQMessage {
       }
       if (port_ != 0) {
         output.writeInt32(12, port_);
+      }
+      if (transferType_ != 0) {
+        output.writeInt32(13, transferType_);
       }
       unknownFields.writeTo(output);
     }
@@ -941,6 +990,10 @@ public final class MQMessage {
         size += com.google.protobuf.CodedOutputStream
           .computeInt32Size(12, port_);
       }
+      if (transferType_ != 0) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt32Size(13, transferType_);
+      }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
       return size;
@@ -980,6 +1033,8 @@ public final class MQMessage {
           .equals(other.getAddress())) return false;
       if (getPort()
           != other.getPort()) return false;
+      if (getTransferType()
+          != other.getTransferType()) return false;
       if (!unknownFields.equals(other.unknownFields)) return false;
       return true;
     }
@@ -1022,6 +1077,8 @@ public final class MQMessage {
       hash = (53 * hash) + getAddress().hashCode();
       hash = (37 * hash) + PORT_FIELD_NUMBER;
       hash = (53 * hash) + getPort();
+      hash = (37 * hash) + TRANSFERTYPE_FIELD_NUMBER;
+      hash = (53 * hash) + getTransferType();
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
       return hash;
@@ -1200,6 +1257,8 @@ public final class MQMessage {
 
         port_ = 0;
 
+        transferType_ = 0;
+
         return this;
       }
 
@@ -1244,6 +1303,7 @@ public final class MQMessage {
         result.connType_ = connType_;
         result.address_ = address_;
         result.port_ = port_;
+        result.transferType_ = transferType_;
         onBuilt();
         return result;
       }
@@ -1337,6 +1397,9 @@ public final class MQMessage {
         }
         if (other.getPort() != 0) {
           setPort(other.getPort());
+        }
+        if (other.getTransferType() != 0) {
+          setTransferType(other.getTransferType());
         }
         this.mergeUnknownFields(other.unknownFields);
         onChanged();
@@ -2175,6 +2238,10 @@ public final class MQMessage {
 
       private java.lang.Object address_ = "";
       /**
+       * <pre>
+       * 废弃参数，待删除
+       * </pre>
+       *
        * <code>string address = 11;</code>
        * @return The address.
        */
@@ -2191,6 +2258,10 @@ public final class MQMessage {
         }
       }
       /**
+       * <pre>
+       * 废弃参数，待删除
+       * </pre>
+       *
        * <code>string address = 11;</code>
        * @return The bytes for address.
        */
@@ -2208,6 +2279,10 @@ public final class MQMessage {
         }
       }
       /**
+       * <pre>
+       * 废弃参数，待删除
+       * </pre>
+       *
        * <code>string address = 11;</code>
        * @param value The address to set.
        * @return This builder for chaining.
@@ -2223,6 +2298,10 @@ public final class MQMessage {
         return this;
       }
       /**
+       * <pre>
+       * 废弃参数，待删除
+       * </pre>
+       *
        * <code>string address = 11;</code>
        * @return This builder for chaining.
        */
@@ -2233,6 +2312,10 @@ public final class MQMessage {
         return this;
       }
       /**
+       * <pre>
+       * 废弃参数，待删除
+       * </pre>
+       *
        * <code>string address = 11;</code>
        * @param value The bytes for address to set.
        * @return This builder for chaining.
@@ -2276,6 +2359,49 @@ public final class MQMessage {
       public Builder clearPort() {
         
         port_ = 0;
+        onChanged();
+        return this;
+      }
+
+      private int transferType_ ;
+      /**
+       * <pre>
+       * 消息的发送方式 1, 单点 2，广播
+       * </pre>
+       *
+       * <code>int32 transferType = 13;</code>
+       * @return The transferType.
+       */
+      @java.lang.Override
+      public int getTransferType() {
+        return transferType_;
+      }
+      /**
+       * <pre>
+       * 消息的发送方式 1, 单点 2，广播
+       * </pre>
+       *
+       * <code>int32 transferType = 13;</code>
+       * @param value The transferType to set.
+       * @return This builder for chaining.
+       */
+      public Builder setTransferType(int value) {
+        
+        transferType_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * 消息的发送方式 1, 单点 2，广播
+       * </pre>
+       *
+       * <code>int32 transferType = 13;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearTransferType() {
+        
+        transferType_ = 0;
         onChanged();
         return this;
       }
@@ -2351,15 +2477,16 @@ public final class MQMessage {
       descriptor;
   static {
     java.lang.String[] descriptorData = {
-      "\n\rMessage.proto\"\222\002\n\010MQEntity\022\n\n\002id\030\001 \001(\t" +
+      "\n\rMessage.proto\"\250\002\n\010MQEntity\022\n\n\002id\030\001 \001(\t" +
       "\022\r\n\005queue\030\002 \003(\t\022+\n\tqueueInfo\030\003 \003(\0132\030.MQE" +
       "ntity.QueueInfoEntry\022\013\n\003msg\030\004 \001(\t\022\020\n\010dat" +
       "eTime\030\005 \001(\t\022\r\n\005isAck\030\006 \001(\010\022\013\n\003ack\030\007 \001(\010\022" +
       "\017\n\007msgType\030\010 \001(\005\022\017\n\007errFlag\030\t \001(\010\022\020\n\010con" +
       "nType\030\n \001(\005\022\017\n\007address\030\013 \001(\t\022\014\n\004port\030\014 \001" +
-      "(\005\0320\n\016QueueInfoEntry\022\013\n\003key\030\001 \001(\t\022\r\n\005val" +
-      "ue\030\002 \001(\005:\0028\001B\'\n\030com.krest.mq.core.entity" +
-      "B\tMQMessageH\001b\006proto3"
+      "(\005\022\024\n\014transferType\030\r \001(\005\0320\n\016QueueInfoEnt" +
+      "ry\022\013\n\003key\030\001 \001(\t\022\r\n\005value\030\002 \001(\005:\0028\001B\'\n\030co" +
+      "m.krest.mq.core.entityB\tMQMessageH\001b\006pro" +
+      "to3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -2370,7 +2497,7 @@ public final class MQMessage {
     internal_static_MQEntity_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_MQEntity_descriptor,
-        new java.lang.String[] { "Id", "Queue", "QueueInfo", "Msg", "DateTime", "IsAck", "Ack", "MsgType", "ErrFlag", "ConnType", "Address", "Port", });
+        new java.lang.String[] { "Id", "Queue", "QueueInfo", "Msg", "DateTime", "IsAck", "Ack", "MsgType", "ErrFlag", "ConnType", "Address", "Port", "TransferType", });
     internal_static_MQEntity_QueueInfoEntry_descriptor =
       internal_static_MQEntity_descriptor.getNestedTypes().get(0);
     internal_static_MQEntity_QueueInfoEntry_fieldAccessorTable = new

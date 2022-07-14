@@ -1,7 +1,6 @@
 package com.krest.mq.core.processor;
 
 import com.google.protobuf.ProtocolStringList;
-import com.krest.file.handler.FileHandler;
 import com.krest.mq.core.cache.LocalCache;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.entity.QueueInfo;
@@ -9,11 +8,9 @@ import com.krest.mq.core.entity.QueueType;
 import com.krest.mq.core.runnable.UdpSendMsgRunnable;
 import com.krest.mq.core.utils.MsgResolver;
 import com.krest.mq.core.runnable.ExecutorFactory;
-import com.krest.mq.core.runnable.TcpSendMsgRunnable;
 import com.krest.mq.core.runnable.ThreadPoolConfig;
 import com.krest.mq.core.utils.DateUtils;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.socket.DatagramPacket;
 import lombok.extern.slf4j.Slf4j;
@@ -43,16 +40,6 @@ public class UdpMsgProcessor {
                 .setDateTime(DateUtils.getNowDate())
                 .build();
         ctx.writeAndFlush(response);
-    }
-
-
-    public static boolean synchMsg(MQMessage.MQEntity entity) {
-        return FileHandler.saveData(entity.getId(), entity.toByteArray());
-    }
-
-
-    public static boolean synchMsg(DatagramPacket datagramPacket) {
-        return synchMsg(MsgResolver.parseUdpDatagramPacket(datagramPacket));
     }
 
 
@@ -165,7 +152,7 @@ public class UdpMsgProcessor {
                     LocalCache.packetQueueMap.getOrDefault(queueName, new CopyOnWriteArraySet<>());
             System.out.println("packet:" + packet);
             datagramPackets.add(packet.sender());
-            LocalCache.packetQueueMap.put(queueName,datagramPackets);
+            LocalCache.packetQueueMap.put(queueName, datagramPackets);
 
             BlockingQueue<MQMessage.MQEntity> curQueue = LocalCache.queueMap.get(queueName);
 

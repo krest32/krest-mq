@@ -8,6 +8,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.*;
 
 @Slf4j
@@ -25,9 +26,11 @@ public class TcpSendMsgRunnable implements Runnable {
             while (true) {
                 try {
                     MQMessage.MQEntity mqEntity = LocalCache.queueMap.get(queueName).take();
-                    List<Channel> channels = LocalCache.ctxMap.get(queueName);
+                    List<Channel> channels = LocalCache.queueCtxListMap.get(queueName);
                     if (null != channels && channels.size() > 0) {
-                        for (Channel channel : channels) {
+                        // 单点发送
+                        if (mqEntity.getTransferType() == 1) {
+                            Channel channel = randomChannel(channels);
                             if (mqEntity.getIsAck()) {
                                 // ack 机制判断发送模式
                                 boolean flag = ackSendMode(channel, mqEntity);
@@ -35,9 +38,20 @@ public class TcpSendMsgRunnable implements Runnable {
                                 if (!flag) {
                                     replyQueueInfo(mqEntity, queueName);
                                 }
-                            } else {
-                                // 普通机制，可能会丢失消息
-                                channel.writeAndFlush(mqEntity);
+                            }
+                        } else {
+                            for (Channel channel : channels) {
+                                if (mqEntity.getIsAck()) {
+                                    // ack 机制判断发送模式
+                                    boolean flag = ackSendMode(channel, mqEntity);
+                                    // 如果发送未成功 msg 会被重写写入到 queue 中
+                                    if (!flag) {
+                                        replyQueueInfo(mqEntity, queueName);
+                                    }
+                                } else {
+                                    // 普通机制，可能会丢失消息
+                                    channel.writeAndFlush(mqEntity);
+                                }
                             }
                         }
                     } else {
@@ -52,6 +66,10 @@ public class TcpSendMsgRunnable implements Runnable {
         } else {
             log.error("未知的消息推送模式");
         }
+    }
+
+    private Channel randomChannel(List<Channel> channels) {
+        return channels.get(new Random().nextInt(channels.size()));
     }
 
     private boolean ackSendMode(Channel channel, MQMessage.MQEntity mqEntity) {
@@ -78,7 +96,8 @@ public class TcpSendMsgRunnable implements Runnable {
     /**
      * 回复 queue 的信息
      */
-    private synchronized void replyQueueInfo(MQMessage.MQEntity mqEntity, String queueName) throws InterruptedException {
+    private synchronized void replyQueueInfo(MQMessage.MQEntity mqEntity, String queueName) throws
+            InterruptedException {
         BlockingQueue<MQMessage.MQEntity> queue = new LinkedBlockingQueue<>();
         queue.offer(mqEntity);
         while (!LocalCache.queueMap.get(queueName).isEmpty()) {

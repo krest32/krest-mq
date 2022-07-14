@@ -1,12 +1,17 @@
 package com.krest.mq.core.handler;
 
+import com.google.gson.JsonObject;
+import com.krest.file.handler.KrestFileHandler;
 import com.krest.mq.core.cache.LocalCache;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.processor.TcpMsgProcessor;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.logging.FileHandler;
 
 
 @Slf4j
@@ -24,18 +29,17 @@ public class MQTCPServerHandler extends SimpleChannelInboundHandler<MQMessage.MQ
         Channel channel = ctx.channel();
         LocalCache.clientChannels.remove(channel);
         // 更新本地缓存的 channel 信息
-        List<String> queueList = LocalCache.ctxQueueMap.get(channel);
-
+        List<String> queueList = LocalCache.ctxQueueListMap.get(channel);
         if (null != queueList) {
             for (String queueName : queueList) {
-                List<Channel> channels = LocalCache.ctxMap.get(queueName);
+                List<Channel> channels = LocalCache.queueCtxListMap.get(queueName);
                 channels.remove(channel);
                 System.out.println(channels.size());
-                LocalCache.ctxMap.put(queueName, channels);
+                LocalCache.queueCtxListMap.put(queueName, channels);
             }
         }
 
-        LocalCache.ctxQueueMap.remove(channel);
+        LocalCache.ctxQueueListMap.remove(channel);
         log.info("exceptionCaught client {} 下线了", channel.remoteAddress());
     }
 

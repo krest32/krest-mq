@@ -1,6 +1,11 @@
 package com.krest.mq.core.client;
 
+import com.krest.file.handler.KrestFileHandler;
+import com.krest.mq.core.cache.CacheFileConfig;
+import com.krest.mq.core.cache.LocalCache;
 import com.krest.mq.core.entity.MQMessage;
+import com.krest.mq.core.entity.QueueInfo;
+import com.krest.mq.core.handler.MQTCPClientHandler;
 import com.krest.mq.core.utils.MQUtils;
 import com.krest.mq.core.listener.ChannelListener;
 import io.netty.bootstrap.Bootstrap;
@@ -82,7 +87,7 @@ public class MQTCPClient implements MQClient {
                             ch.pipeline().addLast(new ProtobufDecoder(MQMessage.MQEntity.getDefaultInstance()));
                             ch.pipeline().addLast(new ProtobufVarint32LengthFieldPrepender());//解决粘包半包编码器
                             ch.pipeline().addLast(new ProtobufEncoder());
-                            ch.pipeline().addLast(handlerAdapter.getClass().newInstance());
+                            ch.pipeline().addLast(handlerAdapter);
                         }
                     });
             do {
@@ -94,10 +99,28 @@ public class MQTCPClient implements MQClient {
         }
     }
 
+    public void connect(ChannelInitializer channelInitializer) {
+        bootstrap = new Bootstrap();
+        try {
+            bootstrap.group(workGroup)
+                    .channel(NioSocketChannel.class)
+                    .handler(channelInitializer);
+            do {
+                channel = MQUtils.tryConnect(bootstrap, host, port);
+            }
+            while (channel == null);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
+    }
+
+
     @Override
     public void connectAndSend(ChannelInboundHandlerAdapter handlerAdapter, MQMessage.MQEntity mqEntity) {
         connect(handlerAdapter);
+
         sendMsg(mqEntity);
+
     }
 
 

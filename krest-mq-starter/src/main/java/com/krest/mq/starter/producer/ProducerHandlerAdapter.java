@@ -12,16 +12,14 @@ public class ProducerHandlerAdapter extends SimpleChannelInboundHandler<MQMessag
 
     ChannelListener inactiveListener;
 
-    private ProducerHandlerAdapter() {
-    }
 
     public ProducerHandlerAdapter(ChannelListener inactiveListener) {
         this.inactiveListener = inactiveListener;
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext channelHandlerContext, MQMessage.MQEntity response) throws Exception {
-        // todo 分发消息
+    protected void channelRead0(ChannelHandlerContext channelHandlerContext, MQMessage.MQEntity response)
+            throws Exception {
         System.out.println("生产者获取信息：" + response);
     }
 

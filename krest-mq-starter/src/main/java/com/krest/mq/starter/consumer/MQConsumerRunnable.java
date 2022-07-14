@@ -6,10 +6,7 @@ import com.krest.mq.core.listener.ChannelListener;
 import com.krest.mq.core.utils.DateUtils;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Slf4j
 public class MQConsumerRunnable implements Runnable {
@@ -17,13 +14,13 @@ public class MQConsumerRunnable implements Runnable {
     String host;
     int port;
     Object bean;
-    Set<String> queueName;
+    Map<String, Integer> queueInfo;
 
-    public MQConsumerRunnable(String host, int port, Set<String> queueName, Object bean) {
+    public MQConsumerRunnable(String host, int port, Map<String, Integer> queueInfo, Object bean) {
         this.host = host;
         this.port = port;
-        this.queueName = queueName;
         this.bean = bean;
+        this.queueInfo = queueInfo;
     }
 
     /**
@@ -31,20 +28,21 @@ public class MQConsumerRunnable implements Runnable {
      */
     @Override
     public void run() {
-        log.info("consumer connect server, host : {} , port : {} , queue name : {} "
-                , host, port, queueName);
-        List<String> queueList = new ArrayList<>(queueName);
+        log.info("consumer connect server, host : {} , port : {} ", host, port);
+
         MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
         MQMessage.MQEntity request = builder.setId(UUID.randomUUID().toString())
                 .setDateTime(DateUtils.getNowDate())
-                .setMsgType(0)
+                .setMsgType(2)
                 .setIsAck(true)
-                .addAllQueue(queueList)
+                .putAllQueueInfo(this.queueInfo)
                 .build();
         MQTCPClient mqConsumer = new MQTCPClient(host, port);
 
         ChannelListener inactiveListener = mqConsumer.getInactiveListener();
         ConsumerHandlerAdapter handlerAdapter = new ConsumerHandlerAdapter(inactiveListener, this.bean);
-        mqConsumer.connect(handlerAdapter);
+        mqConsumer.connect(new ConsumerChannelInitializer(inactiveListener, bean));
+        mqConsumer.sendMsg(request);
+//        mqConsumer.connectAndSend(handlerAdapter, request);
     }
 }
