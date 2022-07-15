@@ -3,15 +3,14 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>krest-mq-demo</artifactId>
+        <artifactId>krest-mq</artifactId>
         <groupId>com.krest</groupId>
         <version>1.0-bate</version>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
-
-    <packaging>jar</packaging>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>producer-demo</artifactId>
 
+    <artifactId>producer1-demo</artifactId>
     <dependencies>
         <dependency>
             <groupId>com.krest</groupId>
@@ -24,4 +23,5 @@
             <version>2.2.1.RELEASE</version>
         </dependency>
     </dependencies>
+
 </project>

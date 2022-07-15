@@ -13,10 +13,11 @@ import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 public class ProducerChannelInitializer extends ChannelInitializer {
 
     ChannelListener inactiveListener;
+    MQMessage.MQEntity mqEntity;
 
-    public ProducerChannelInitializer(ChannelListener inactiveListener) {
+    public ProducerChannelInitializer(ChannelListener inactiveListener, MQMessage.MQEntity mqEntity) {
+        this.mqEntity = mqEntity;
         this.inactiveListener = inactiveListener;
-
     }
 
     @Override
@@ -27,6 +28,6 @@ public class ProducerChannelInitializer extends ChannelInitializer {
         channel.pipeline().addLast(new ProtobufDecoder(MQMessage.MQEntity.getDefaultInstance()));
         channel.pipeline().addLast(new ProtobufVarint32LengthFieldPrepender());//解决粘包半包编码器
         channel.pipeline().addLast(new ProtobufEncoder());
-        channel.pipeline().addLast(new ProducerHandlerAdapter(inactiveListener));
+        channel.pipeline().addLast(new ProducerHandlerAdapter(inactiveListener, this.mqEntity));
     }
 }

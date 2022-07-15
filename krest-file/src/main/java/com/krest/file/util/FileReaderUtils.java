@@ -4,23 +4,18 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.LineIterator;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FileReaderUtils {
 
-    /**
-     * 返回文件的最后一行数据
-     */
-    public static String getLastRow(String filePath) {
-        return readFile(filePath);
-    }
-
-    public static String readFile(String filePath) {
-        String ans = null;
+    public static List<String> readFile(String filePath) {
+        List<String> ans = new ArrayList<>();
         LineIterator it = null;
         try {
             it = FileUtils.lineIterator(new File(filePath), "UTF-8");
             while (it.hasNext()) {
-                ans = it.nextLine();
+                ans.add(it.nextLine());
             }
         } catch (IOException e) {
             e.printStackTrace();

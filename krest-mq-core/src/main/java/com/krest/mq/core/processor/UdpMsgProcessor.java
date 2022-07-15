@@ -7,8 +7,8 @@ import com.krest.mq.core.entity.QueueInfo;
 import com.krest.mq.core.entity.QueueType;
 import com.krest.mq.core.runnable.UdpSendMsgRunnable;
 import com.krest.mq.core.utils.MsgResolver;
-import com.krest.mq.core.runnable.ExecutorFactory;
-import com.krest.mq.core.runnable.ThreadPoolConfig;
+import com.krest.mq.core.exeutor.ExecutorFactory;
+import com.krest.mq.core.exeutor.ThreadPoolConfig;
 import com.krest.mq.core.utils.DateUtils;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
@@ -16,9 +16,7 @@ import io.netty.channel.socket.DatagramPacket;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
@@ -142,7 +140,7 @@ public class UdpMsgProcessor {
             // 判断队列是否已经存在
             if (null == LocalCache.queueMap.get(queueName)) {
                 LocalCache.queueInfoMap.put(queueName,
-                        new QueueInfo(queueName, val == 1 ? QueueType.PERMANENT : QueueType.TEMPORARY));
+                        new QueueInfo(queueName, val == 1 ? QueueType.PERMANENT : QueueType.TEMPORARY, ""));
             } else {
                 log.info("队列 [ {} ] 已经存在", queueName);
             }
@@ -154,10 +152,10 @@ public class UdpMsgProcessor {
             datagramPackets.add(packet.sender());
             LocalCache.packetQueueMap.put(queueName, datagramPackets);
 
-            BlockingQueue<MQMessage.MQEntity> curQueue = LocalCache.queueMap.get(queueName);
+            BlockingDeque<MQMessage.MQEntity> curQueue = LocalCache.queueMap.get(queueName);
 
             if (null == curQueue) {
-                curQueue = new LinkedBlockingQueue<>();
+                curQueue = new LinkedBlockingDeque<>();
                 LocalCache.queueMap.put(queueName, curQueue);
                 // 开启推送模式
                 log.info("队列 [{}] 开始推送", queueName);

@@ -1,16 +1,14 @@
 package com.krest.file.handler;
 
-import com.krest.file.entity.CacheFileConfig;
+import com.krest.file.entity.KrestFileConfig;
 import com.krest.file.util.CSVTool;
 import com.krest.file.util.DateUtils;
 import com.krest.file.util.FileReaderUtils;
 import com.krest.file.util.FileWriterUtils;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 
-import javax.xml.crypto.Data;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Date;
+
 import java.util.Iterator;
 import java.util.List;
 
@@ -37,7 +35,7 @@ public class KrestFileHandler {
     public synchronized static boolean saveData(String filePath, String contentId, String content) {
 
         // 先找到索引文件如果没有，进行新建
-        String idxFileName = filePath + "\\" + CacheFileConfig.indexFileName;
+        String idxFileName = filePath + "\\" + KrestFileConfig.indexFileName;
         String curFile = null;
         File idxFile = new File(idxFileName);
         List<String[]> idContentList = new ArrayList<>();
@@ -48,10 +46,11 @@ public class KrestFileHandler {
                     {curFileId, filePath + "\\" + curFileId, contentId, "0", DateUtils.getNowDate(), DateUtils.getNowDate()};
             idContentList.add(idxContent);
             // 创建第一个 idx 文件
-            CSVTool.write(idxFileName, CacheFileConfig.indexFileHeader, idContentList);
+            CSVTool.write(idxFileName, KrestFileConfig.indexFileHeader, idContentList);
         }
 
         idContentList.clear();
+
         // 读取 idx 文件中的信息， 获取最后一行的信息
         List<String> idxText = CSVTool.getText(idxFileName);
         for (int i = 0; i < idxText.size() - 1; i++) {
@@ -59,18 +58,20 @@ public class KrestFileHandler {
             idContentList.add(tempCsvRowData);
         }
         String[] lastIdxContent = idxText.get(idxText.size() - 1).split(",");
+        lastIdxContent[2] = contentId;
         lastIdxContent[3] = String.valueOf(new File(lastIdxContent[1]).length());
         lastIdxContent[5] = DateUtils.getNowDate();
 
         curFile = lastIdxContent[1];
         idContentList.add(lastIdxContent);
         // 判断当前文件的大小
-        if (Integer.valueOf(lastIdxContent[3]) >= CacheFileConfig.maxFileSize) {
+        if (Integer.valueOf(lastIdxContent[3]) >= KrestFileConfig.maxFileSize) {
             // 生成下一个文件信息
             int nextId = Integer.valueOf(lastIdxContent[0]) + 1;
-            if (nextId >= CacheFileConfig.maxFileCount) {
+            if (nextId >= KrestFileConfig.maxFileCount) {
                 nextId = 1;
             }
+
             String[] newIdxContext = new String[]
                     {String.valueOf(nextId), filePath + "\\" + nextId, contentId, "0",
                             DateUtils.getNowDate(), DateUtils.getNowDate()};
@@ -89,19 +90,42 @@ public class KrestFileHandler {
                 }
             }
             idContentList.add(newIdxContext);
-
             // 记录新的 index 文件
             curFile = newIdxContext[1];
         }
         // 更新 index 信息
-        CSVTool.write(idxFileName, CacheFileConfig.indexFileHeader, idContentList);
+        CSVTool.write(idxFileName, KrestFileConfig.indexFileHeader, idContentList);
         System.out.println("写入文件：");
-        System.out.println(curFile);
         System.out.println(content);
         return FileWriterUtils.bufferedWriterMethod(curFile, content, true);
     }
 
     public static boolean saveData(String filePath, String content, boolean append) {
         return FileWriterUtils.bufferedWriterMethod(filePath, content, append);
+    }
+
+    /**
+     * 批量获取符合条件的数据
+     */
+    public static List<String> readData(String filePath, String dataId) {
+        List<String> ans = new ArrayList<>();
+        // 首先，找到当前的 idx 文件
+        String idxFileName = filePath + "\\" + KrestFileConfig.indexFileName;
+        File idxFile = new File(idxFileName);
+        if (idxFile.exists() && idxFile.isFile()) {
+
+            // 然后读取每一列文件的内容， 其中第
+            List<String> fileList = CSVTool.getListColumn(true, idxFileName, 2);
+            List<String> idList = CSVTool.getListColumn(true, idxFileName, 3);
+            // 开始逐个读取文件中的内容
+            for (int i = idList.size() - 1; i >= 0; i--) {
+                if (Long.valueOf(idList.get(i)).compareTo(Long.valueOf(dataId)) >= 0) {
+                    ans.addAll(FileReaderUtils.readFile(fileList.get(i)));
+                } else {
+                    break;
+                }
+            }
+        }
+        return ans;
     }
 }

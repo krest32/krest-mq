@@ -13,10 +13,12 @@ public class ConsumerChannelInitializer extends ChannelInitializer {
 
     ChannelListener inactiveListener;
     Object bean;
+    MQMessage.MQEntity mqEntity;
 
-    public ConsumerChannelInitializer(ChannelListener inactiveListener, Object bean) {
+    public ConsumerChannelInitializer(ChannelListener inactiveListener, Object bean, MQMessage.MQEntity mqEntity) {
         this.inactiveListener = inactiveListener;
         this.bean = bean;
+        this.mqEntity = mqEntity;
     }
 
     @Override
@@ -27,6 +29,6 @@ public class ConsumerChannelInitializer extends ChannelInitializer {
         channel.pipeline().addLast(new ProtobufDecoder(MQMessage.MQEntity.getDefaultInstance()));
         channel.pipeline().addLast(new ProtobufVarint32LengthFieldPrepender());//解决粘包半包编码器
         channel.pipeline().addLast(new ProtobufEncoder());
-        channel.pipeline().addLast(new ConsumerHandlerAdapter(inactiveListener, this.bean));
+        channel.pipeline().addLast(new ConsumerHandlerAdapter(inactiveListener, this.bean, this.mqEntity));
     }
 }

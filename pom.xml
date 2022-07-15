@@ -16,8 +16,8 @@
         <module>krest-mq-admin</module>
         <module>krest-mq-demo/consumer1-demo</module>
         <module>krest-mq-demo/consumer2-demo</module>
-        <module>krest-mq-demo/producer-demo</module>
         <module>krest-file</module>
+        <module>krest-mq-demo/producer1-demo</module>
     </modules>
 
     <parent>

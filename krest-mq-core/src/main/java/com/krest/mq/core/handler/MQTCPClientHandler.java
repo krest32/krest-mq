@@ -10,12 +10,14 @@ import lombok.extern.slf4j.Slf4j;
 public class MQTCPClientHandler extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
 
     private ChannelListener inactiveListener = null;
+    MQMessage.MQEntity mqEntity;
 
     public MQTCPClientHandler() {
     }
 
-    public MQTCPClientHandler(ChannelListener channelListener) {
+    public MQTCPClientHandler(ChannelListener channelListener, MQMessage.MQEntity mqEntity) {
         this.inactiveListener = channelListener;
+        this.mqEntity = mqEntity;
     }
 
     @Override
@@ -36,7 +38,7 @@ public class MQTCPClientHandler extends SimpleChannelInboundHandler<MQMessage.MQ
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         if (inactiveListener != null) {
-            inactiveListener.onInactive();
+            inactiveListener.onInactive(this.mqEntity);
         }
     }
 }

@@ -11,9 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 public class ProducerHandlerAdapter extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
 
     ChannelListener inactiveListener;
+    MQMessage.MQEntity mqEntity;
 
 
-    public ProducerHandlerAdapter(ChannelListener inactiveListener) {
+    public ProducerHandlerAdapter(ChannelListener inactiveListener, MQMessage.MQEntity mqEntity) {
+        this.mqEntity = mqEntity;
         this.inactiveListener = inactiveListener;
     }
 
@@ -32,7 +34,7 @@ public class ProducerHandlerAdapter extends SimpleChannelInboundHandler<MQMessag
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         if (inactiveListener != null) {
-            inactiveListener.onInactive();
+            inactiveListener.onInactive(this.mqEntity);
         }
     }
 }

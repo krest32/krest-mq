@@ -8,6 +8,8 @@ import io.netty.channel.ChannelHandlerContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 @Component
 @KrestConsumer
@@ -16,11 +18,25 @@ public class MQListener {
     @KrestMQListener(queue = "demo", queueType = QueueType.PERMANENT)
     public void channelRead(ChannelHandlerContext ctx, MQMessage.MQEntity response) throws Exception {
         log.info("demo get msg : " + response.getMsg());
+        // 如果是 Ack 模式, 则返回一个 确认的 id 信息
+        if (response.getIsAck()) {
+            Thread.sleep(1000);
+            ctx.writeAndFlush(MQMessage.MQEntity.newBuilder()
+                    .setId(response.getId())
+                    .setMsgType(3)
+                    .build());
+        }
     }
 
-    @KrestMQListener(queue = "demo1",queueType = QueueType.TEMPORARY)
+    @KrestMQListener(queue = "demo1", queueType = QueueType.TEMPORARY)
     public void channelRead1(ChannelHandlerContext ctx, MQMessage.MQEntity response) throws Exception {
         log.info("demo1 get msg : " + response.getMsg());
+        if (response.getIsAck()) {
+            Thread.sleep(1000);
+            ctx.writeAndFlush(MQMessage.MQEntity.newBuilder()
+                    .setId(response.getId())
+                    .setMsgType(3).build());
+        }
     }
 
 }

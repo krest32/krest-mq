@@ -11,4 +11,6 @@ public class QueueInfo implements Serializable {
     private static final long serialVersionUID = 1;
     String name;
     QueueType type;
+    // 记录当前 queue 的偏移量， 也就是 msg 的 id
+    String offset;
 }

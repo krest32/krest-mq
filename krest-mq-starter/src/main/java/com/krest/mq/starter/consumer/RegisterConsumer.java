@@ -1,6 +1,7 @@
 package com.krest.mq.starter.consumer;
 
 import com.krest.mq.core.entity.QueueType;
+import com.krest.mq.core.utils.IdWorker;
 import com.krest.mq.starter.anno.KrestConsumer;
 import com.krest.mq.starter.anno.KrestMQListener;
 import com.krest.mq.starter.properties.KrestMQProperties;
@@ -23,16 +24,16 @@ public class RegisterConsumer implements BeanPostProcessor {
     @Autowired
     KrestMQProperties mqProperties;
 
+    @Autowired
+    IdWorker idWorker;
 
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-
         // 如果标志了消息队列的注解
         if (bean.getClass().isAnnotationPresent(KrestConsumer.class)) {
             // 获取方法有条件Listener的注解信息
             Class<?> beanClass = bean.getClass();
             Method[] declaredMethods = beanClass.getDeclaredMethods();
-
             Map<String, Method> queueMethod = new HashMap<>();
             Set<String> queues = new HashSet<>();
             Map<String, Integer> queueInfo = new HashMap<>();
@@ -52,13 +53,11 @@ public class RegisterConsumer implements BeanPostProcessor {
 
             // 新建客户端
             MQConsumerRunnable runnable = new MQConsumerRunnable(
-                    mqProperties.getHost(), mqProperties.getPort(), queueInfo, bean
+                    mqProperties.getHost(), mqProperties.getPort(), queueInfo, bean, idWorker
             );
 
             Thread thread = new Thread(runnable);
             thread.start();
-            // 建立 consumer 客户端
-
         }
         return bean;
     }

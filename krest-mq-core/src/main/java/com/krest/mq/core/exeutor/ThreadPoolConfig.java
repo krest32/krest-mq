@@ -1,4 +1,4 @@
-package com.krest.mq.core.runnable;
+package com.krest.mq.core.exeutor;
 
 
 import lombok.AllArgsConstructor;

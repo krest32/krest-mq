@@ -43,10 +43,10 @@ public class MQTCPClient implements MQClient {
     /**
      * 构造方法
      */
-    public MQTCPClient(String host, int port) {
+    public MQTCPClient(String host, int port, MQMessage.MQEntity mqEntity) {
         this.host = host;
         this.port = port;
-        inactiveListener = () -> {
+        inactiveListener = (mqMessage) -> {
             log.info("connection with server is closed.");
             log.info("try to reconnect to the server.");
             channel = null;
@@ -54,6 +54,7 @@ public class MQTCPClient implements MQClient {
                 channel = MQUtils.tryConnect(bootstrap, host, port);
             }
             while (channel == null);
+            channel.writeAndFlush(mqEntity).sync();
         };
     }
 

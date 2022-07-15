@@ -1,6 +1,6 @@
 package com.krest.mq.core.server;
 
-import com.krest.mq.core.config.MQConfig;
+import com.krest.mq.core.config.MQBuilderConfig;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.handler.MQUDPServerHandler;
 import io.netty.bootstrap.Bootstrap;
@@ -11,19 +11,17 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.handler.codec.protobuf.ProtobufDecoder;
 import io.netty.handler.codec.protobuf.ProtobufEncoder;
-import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
-import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MQUDPServer implements MQServer {
     NioEventLoopGroup workGroup;
-    MQConfig mqConfig;
+    MQBuilderConfig mqConfig;
 
     private MQUDPServer() {
     }
 
-    public MQUDPServer(MQConfig mqConfig) {
+    public MQUDPServer(MQBuilderConfig mqConfig) {
         this.mqConfig = mqConfig;
     }
 

@@ -12,9 +12,9 @@ import java.lang.reflect.Method;
 
 
 @Slf4j
-@ChannelHandler.Sharable
 public class ConsumerHandlerAdapter extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
 
+    MQMessage.MQEntity mqEntity;
     ChannelListener inactiveListener;
     Object bean;
 
@@ -22,9 +22,10 @@ public class ConsumerHandlerAdapter extends SimpleChannelInboundHandler<MQMessag
 
     }
 
-    public ConsumerHandlerAdapter(ChannelListener inactiveListener, Object bean) {
+    public ConsumerHandlerAdapter(ChannelListener inactiveListener, Object bean, MQMessage.MQEntity mqEntity) {
         this.inactiveListener = inactiveListener;
         this.bean = bean;
+        this.mqEntity = mqEntity;
     }
 
 
@@ -54,7 +55,7 @@ public class ConsumerHandlerAdapter extends SimpleChannelInboundHandler<MQMessag
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         if (inactiveListener != null) {
-            inactiveListener.onInactive();
+            inactiveListener.onInactive(this.mqEntity);
         }
     }
 }

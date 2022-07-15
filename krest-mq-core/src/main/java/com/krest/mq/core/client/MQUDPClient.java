@@ -1,6 +1,6 @@
 package com.krest.mq.core.client;
 
-import com.krest.mq.core.config.MQConfig;
+import com.krest.mq.core.config.MQBuilderConfig;
 import com.krest.mq.core.listener.ChannelListener;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.utils.MQUtils;
@@ -10,19 +10,16 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.handler.codec.protobuf.ProtobufDecoder;
 import io.netty.handler.codec.protobuf.ProtobufEncoder;
-import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
-import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class MQUDPClient implements MQClient {
 
-    MQConfig mqConfig;
+    MQBuilderConfig mqConfig;
     ChannelListener inactiveListener;
     private Bootstrap bootstrap;
     private Channel channel;
     EventLoopGroup workGroup = new NioEventLoopGroup();
-
 
     private MQUDPClient() {
     }
@@ -34,9 +31,12 @@ public class MQUDPClient implements MQClient {
     /**
      * 构造方法
      */
-    public MQUDPClient(MQConfig mqConfig) {
+    /**
+     * 构造方法
+     */
+    public MQUDPClient(MQBuilderConfig mqConfig, MQMessage.MQEntity mqEntity) {
         this.mqConfig = mqConfig;
-        inactiveListener = () -> {
+        inactiveListener = (mqMessage) -> {
             log.info("connection with server is closed.");
             log.info("try to reconnect to the server.");
             channel = null;
@@ -44,6 +44,7 @@ public class MQUDPClient implements MQClient {
                 channel = MQUtils.tryConnect(bootstrap, this.mqConfig.getRemoteAddress(), this.mqConfig.getPort());
             }
             while (channel == null);
+            channel.writeAndFlush(mqEntity).sync();
         };
     }
 

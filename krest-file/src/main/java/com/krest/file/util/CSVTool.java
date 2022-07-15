@@ -99,6 +99,36 @@ public class CSVTool {
         return s;
     }
 
+
+    /**
+     * 批量获取某一列的信息
+     */
+    public static List<String> getListColumn(boolean ignoreHeader, String csvPath, int column) {
+        List<String> ans = new ArrayList<>();
+        CsvReader csvReader = null;
+        try {
+            csvReader = new CsvReader(csvPath, ',', StandardCharsets.UTF_8);
+
+            if (ignoreHeader) {
+                // 如果文件没有表头，这行不用执行.从表头的下一行读，也就是过滤表头
+                csvReader.readHeaders();
+            }
+            int i = 0;
+            String s = "";
+            // 读取每行的内容
+            while (csvReader.readRecord()) {
+                i++;
+                s = csvReader.get(column - 1 < 0 ? 0 : column - 1);
+                ans.add(s);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return ans;
+    }
+
     /**
      * 获取第x行x列内容,根据表头确定列数
      */

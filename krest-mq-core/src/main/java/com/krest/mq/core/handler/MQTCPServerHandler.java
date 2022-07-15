@@ -29,7 +29,7 @@ public class MQTCPServerHandler extends SimpleChannelInboundHandler<MQMessage.MQ
         Channel channel = ctx.channel();
         LocalCache.clientChannels.remove(channel);
         // 更新本地缓存的 channel 信息
-        List<String> queueList = LocalCache.ctxQueueListMap.get(channel);
+        List<String> queueList = LocalCache.ctxQueueListMap.getOrDefault(channel, null);
         if (null != queueList) {
             for (String queueName : queueList) {
                 List<Channel> channels = LocalCache.queueCtxListMap.get(queueName);
@@ -38,7 +38,6 @@ public class MQTCPServerHandler extends SimpleChannelInboundHandler<MQMessage.MQ
                 LocalCache.queueCtxListMap.put(queueName, channels);
             }
         }
-
         LocalCache.ctxQueueListMap.remove(channel);
         log.info("exceptionCaught client {} 下线了", channel.remoteAddress());
     }

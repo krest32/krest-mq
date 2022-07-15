@@ -1,15 +1,18 @@
 package com.krest.mq.core.server;
 
+import com.alibaba.fastjson.JSONObject;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
 import com.krest.file.handler.KrestFileHandler;
 import com.krest.mq.core.cache.CacheFileConfig;
 import com.krest.mq.core.cache.LocalCache;
+import com.krest.mq.core.config.MQNormalConfig;
 import com.krest.mq.core.entity.QueueInfo;
-import com.krest.mq.core.server.MQServer;
-import com.krest.mq.core.config.MQConfig;
+import com.krest.mq.core.entity.QueueType;
+import com.krest.mq.core.config.MQBuilderConfig;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.handler.MQTCPServerHandler;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -21,20 +24,22 @@ import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
+import java.util.concurrent.*;
 
 @Slf4j
 public class MQTCPServer implements MQServer {
     NioEventLoopGroup bossGroup;
     NioEventLoopGroup workGroup;
 
-    MQConfig mqConfig;
+    MQBuilderConfig mqConfig;
 
     private MQTCPServer() {
     }
 
-    public MQTCPServer(MQConfig mqConfig) {
+    public MQTCPServer(MQBuilderConfig mqConfig) {
         this.mqConfig = mqConfig;
     }
 
@@ -84,19 +89,44 @@ public class MQTCPServer implements MQServer {
         LocalCache.queueInfoMap = (ConcurrentHashMap<String, QueueInfo>)
                 KrestFileHandler.readObject(CacheFileConfig.queueInfoFilePath);
 
-
-        if (LocalCache.queueInfoMap == null) {
+        if (null == LocalCache.queueInfoMap) {
             LocalCache.queueInfoMap = new ConcurrentHashMap<>();
         }
 
-        if (LocalCache.queueCtxListMap == null) {
-            LocalCache.queueCtxListMap = new ConcurrentHashMap<>();
-        }
-        if (LocalCache.ctxQueueListMap == null) {
-            LocalCache.ctxQueueListMap = new ConcurrentHashMap<>();
-        }
+        LocalCache.queueMap.put(MQNormalConfig.defaultAckQueue, new LinkedBlockingDeque<>(100));
         // 输出展示
         System.out.println(LocalCache.queueInfoMap);
+        Iterator<Map.Entry<String, QueueInfo>> iterator = LocalCache.queueInfoMap.entrySet().iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry<String, QueueInfo> entry = iterator.next();
+            String queueName = entry.getKey();
+            QueueInfo queueInfo = entry.getValue();
+            try {
+                if (!queueInfo.getType().equals(QueueType.TEMPORARY)) {
+                    // 开始构建队列
+                    BlockingDeque<MQMessage.MQEntity> curBlockQueue = new LinkedBlockingDeque<>();
+                    List<String> queueJsonData = KrestFileHandler.readData(
+                            CacheFileConfig.queueCacheDatePath + queueName, queueInfo.getOffset());
+
+                    // 开始清洗数据
+                    for (String jsonData : queueJsonData) {
+                        MQMessage.MQEntity.Builder tempBuilder = MQMessage.MQEntity.newBuilder();
+                        JsonFormat.parser().merge((String) JSONObject.parse(jsonData),
+                                tempBuilder);
+                        MQMessage.MQEntity mqEntity = tempBuilder.build();
+                        if (Long.valueOf(queueInfo.getOffset())
+                                .compareTo(Long.valueOf(mqEntity.getId())) < 0) {
+                            System.out.println(mqEntity.getId());
+                            curBlockQueue.offer(mqEntity);
+                        }
+                    }
+                    LocalCache.queueMap.put(queueName, curBlockQueue);
+                }
+            } catch (InvalidProtocolBufferException e) {
+                log.error(e.getMessage(), e);
+            }
+        }
     }
 
     public void stop() {

@@ -8,4 +8,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class KrestMQProperties {
     String host;
     int port;
+    int workerId;
+    int datacenterId;
 }

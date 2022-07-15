@@ -2,22 +2,20 @@ package com.krest.mq.core.processor;
 
 import com.google.protobuf.ProtocolStringList;
 import com.krest.mq.core.cache.LocalCache;
+import com.krest.mq.core.config.MQNormalConfig;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.entity.QueueInfo;
 import com.krest.mq.core.entity.QueueType;
+import com.krest.mq.core.exeutor.LocalExecutor;
+import com.krest.mq.core.handler.RespFutureHandler;
 import com.krest.mq.core.runnable.*;
-import com.krest.mq.core.utils.MsgResolver;
 import com.krest.mq.core.utils.DateUtils;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.socket.DatagramPacket;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-
+import java.util.concurrent.LinkedBlockingDeque;
 
 /**
  * 消息处理中心
@@ -25,34 +23,22 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Slf4j
 public class TcpMsgProcessor {
 
-    static ThreadPoolExecutor TcpExecutor = ExecutorFactory.threadPoolExecutor(new ThreadPoolConfig());
-
-    static MQMessage.MQEntity.Builder entityBuilder = MQMessage.MQEntity.newBuilder();
 
     /**
      * 消息处理逻辑
      */
     public static void msgCenter(ChannelHandlerContext ctx, MQMessage.MQEntity entity) {
         System.out.println("服务端获取消息：");
+        System.out.println("----------------------");
         System.out.println(entity);
+        System.out.println("----------------------");
+
         // 先排除异常情况
         // 1. 没有设定消息的来源
         if (entity.getMsgType() == 0) {
             handlerErr(ctx, entity, "unknown msg type");
             return;
         }
-
-        // 2. 生产着设置的消息队列不存在
-        if (entity.getMsgType() == 1) {
-            ProtocolStringList toQueueList = entity.getQueueList();
-            for (String curQueueName : toQueueList) {
-                if (LocalCache.queueMap.get(curQueueName) == null) {
-                    handlerErr(ctx, entity, "msg queue does not exist!");
-                    return;
-                }
-            }
-        }
-
         // 开始根据消息类型处理消息
         // 1 代表生产则
         // 2 代表消费者
@@ -64,10 +50,18 @@ public class TcpMsgProcessor {
             case 2:
                 consumer(ctx, entity);
                 break;
+            case 3:
+                responseMsg(entity);
+                break;
             default:
                 handlerErr(ctx, entity, "unknown msg type");
                 break;
         }
+    }
+
+    private static void responseMsg(MQMessage.MQEntity entity) {
+        // 添加到回复的队列当中
+        LocalCache.responseQueue.add(entity);
     }
 
 
@@ -75,21 +69,12 @@ public class TcpMsgProcessor {
      * 返回错误信息
      */
     private static void handlerErr(ChannelHandlerContext ctx, MQMessage.MQEntity entity, String errorMsg) {
-        MQMessage.MQEntity response = entityBuilder.setId(entity.getId())
+        MQMessage.MQEntity response = MQMessage.MQEntity.newBuilder().setId(entity.getId())
                 .setErrFlag(true)
                 .setMsg(errorMsg)
                 .setDateTime(DateUtils.getNowDate())
                 .build();
         ctx.writeAndFlush(response);
-    }
-
-
-    public static void msgCenter(ChannelHandlerContext ctx, DatagramPacket datagramPacket) {
-        MQMessage.MQEntity entity = MsgResolver.parseUdpDatagramPacket(datagramPacket);
-        if (null == LocalCache.udpChannel) {
-            LocalCache.udpChannel = ctx.channel();
-        }
-        msgCenter(ctx, entity);
     }
 
 
@@ -99,19 +84,34 @@ public class TcpMsgProcessor {
      * 3. 获取对应消费者的ctx，然后推送消息，但是需要判断ctx是否存活状态
      */
     private static void producer(ChannelHandlerContext ctx, MQMessage.MQEntity mqEntity) {
-        // 整理消息一次放入到每个消息队列中
-        ProtocolStringList queueNames = mqEntity.getQueueList();
-        if (!queueNames.isEmpty()) {
-            // 将消息放入到队列当中，已经对于 队列不存在的情况作处理，此处不作任何处理
-            for (String queueName : queueNames) {
-                TcpExecutor.execute(new PutMsgRunnable(queueName, mqEntity));
+        // 判断 消息队列 是否存在
+        ProtocolStringList toQueueList = mqEntity.getQueueList();
+        for (String curQueueName : toQueueList) {
+            if (LocalCache.queueMap.get(curQueueName) == null) {
+                handlerErr(ctx, mqEntity, "msg queue does not exist!");
+                return;
             }
         }
 
 
+        // 整理消息一次放入到每个消息队列中
+        ProtocolStringList queueNames = mqEntity.getQueueList();
+        if (!queueNames.isEmpty()) {
+
+            for (String queueName : queueNames) {
+                if (MQNormalConfig.defaultAckQueue.equals(queueName)) {
+                    continue;
+                }
+
+                // 将消息放入到队列当中，已经对于 队列不存在的情况作处理，此处不作任何处理
+                LocalExecutor.TcpExecutor.execute(new TcpPutMsgRunnable(queueName, mqEntity));
+            }
+        }
+
         // 回复生产者
         if (mqEntity.getIsAck()) {
-            MQMessage.MQEntity response = entityBuilder.setId(mqEntity.getId())
+            MQMessage.MQEntity response = MQMessage.MQEntity.newBuilder()
+                    .setId(mqEntity.getId())
                     .setAck(true)
                     .setDateTime(DateUtils.getNowDate())
                     .build();
@@ -131,13 +131,14 @@ public class TcpMsgProcessor {
     private static void consumer(ChannelHandlerContext ctx, MQMessage.MQEntity request) {
         // 返回确认信息
         if (request.getIsAck()) {
-            MQMessage.MQEntity response = entityBuilder.setId(request.getId())
+            MQMessage.MQEntity response = MQMessage.MQEntity.newBuilder()
+                    .setId(request.getId())
                     .setAck(true)
                     .setDateTime(DateUtils.getNowDate())
                     .build();
             ctx.writeAndFlush(response);
-        }
 
+        }
 
         Map<String, Integer> queueInfoMap = request.getQueueInfoMap();
         Iterator<Map.Entry<String, Integer>> iterator = queueInfoMap.entrySet().iterator();
@@ -153,19 +154,20 @@ public class TcpMsgProcessor {
             LocalCache.queueCtxListMap.put(queueName, channels);
 
             if (LocalCache.queueMap.get(queueName) == null) {
-                LocalCache.queueInfoMap.put(queueName, new QueueInfo(queueName, val == 1 ? QueueType.PERMANENT : QueueType.TEMPORARY));
+                LocalCache.queueInfoMap.put(queueName, new QueueInfo(queueName, val == 1 ? QueueType.PERMANENT : QueueType.TEMPORARY, ""));
                 // 如果不存在队列 就进行创建queue
-                LocalCache.queueMap.put(queueName, new LinkedBlockingQueue<>());
-                // 开启推送模式
-                TcpExecutor.execute(new TcpSendMsgRunnable(queueName));
+                LocalCache.queueMap.put(queueName, new LinkedBlockingDeque<>());
+
                 log.info("队列 [{}] 开始推送", queueName);
             } else {
                 log.info("队列 [ {} ] 已经存在", queueName);
             }
+            // 开启推送模式
+            LocalExecutor.TcpExecutor.execute(new TcpSendMsgRunnable(queueName));
         }
         LocalCache.ctxQueueListMap.put(ctx.channel(), queueNameList);
         // 异步 开启同步任务
-        TcpExecutor.execute(new SynchCacheRunnable());
+        LocalExecutor.TcpExecutor.execute(new SynchCacheRunnable());
     }
 }
 
