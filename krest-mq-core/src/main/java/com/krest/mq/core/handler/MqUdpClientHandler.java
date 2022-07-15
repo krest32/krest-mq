@@ -9,11 +9,11 @@ import io.netty.channel.socket.DatagramPacket;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class MQUDPClientHandler extends SimpleChannelInboundHandler<DatagramPacket> {
+public class MqUdpClientHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
     private ChannelListener inactiveListener = null;
 
-    public MQUDPClientHandler() {
+    public MqUdpClientHandler() {
     }
 
     @Override

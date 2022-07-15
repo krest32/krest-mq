@@ -9,5 +9,6 @@ public class LocalExecutor {
 
     public static ThreadPoolExecutor RespHandleExecutor = ExecutorFactory.threadPoolExecutor(new ThreadPoolConfig());
 
+    public static ThreadPoolExecutor TcpDelayExecutor = ExecutorFactory.threadPoolExecutor(new ThreadPoolConfig());
 
 }

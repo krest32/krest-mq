@@ -15,7 +15,7 @@ import java.util.logging.FileHandler;
 
 
 @Slf4j
-public class MQTCPServerHandler extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
+public class MqTcpServerHandler extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
 
 
     @Override
@@ -34,7 +34,6 @@ public class MQTCPServerHandler extends SimpleChannelInboundHandler<MQMessage.MQ
             for (String queueName : queueList) {
                 List<Channel> channels = LocalCache.queueCtxListMap.get(queueName);
                 channels.remove(channel);
-                System.out.println(channels.size());
                 LocalCache.queueCtxListMap.put(queueName, channels);
             }
         }

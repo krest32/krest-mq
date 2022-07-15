@@ -81,7 +81,7 @@ public final class MQMessage {
 
     /**
      * <pre>
-     * 消费者设置 queue, 1 永久 2 临时
+     * 消费者设置 queue, 1 永久 2 临时 3 延时队列
      * </pre>
      *
      * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -89,7 +89,7 @@ public final class MQMessage {
     int getQueueInfoCount();
     /**
      * <pre>
-     * 消费者设置 queue, 1 永久 2 临时
+     * 消费者设置 queue, 1 永久 2 临时 3 延时队列
      * </pre>
      *
      * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -104,7 +104,7 @@ public final class MQMessage {
     getQueueInfo();
     /**
      * <pre>
-     * 消费者设置 queue, 1 永久 2 临时
+     * 消费者设置 queue, 1 永久 2 临时 3 延时队列
      * </pre>
      *
      * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -113,7 +113,7 @@ public final class MQMessage {
     getQueueInfoMap();
     /**
      * <pre>
-     * 消费者设置 queue, 1 永久 2 临时
+     * 消费者设置 queue, 1 永久 2 临时 3 延时队列
      * </pre>
      *
      * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -124,7 +124,7 @@ public final class MQMessage {
         int defaultValue);
     /**
      * <pre>
-     * 消费者设置 queue, 1 永久 2 临时
+     * 消费者设置 queue, 1 永久 2 临时 3 延时队列
      * </pre>
      *
      * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -195,7 +195,7 @@ public final class MQMessage {
 
     /**
      * <pre>
-     * 消息类型 1 生产着 2 消费者
+     * 消息类型 1 生产着 2 消费者 3 Ack 确认消息
      * </pre>
      *
      * <code>int32 msgType = 8;</code>
@@ -258,6 +258,16 @@ public final class MQMessage {
      * @return The transferType.
      */
     int getTransferType();
+
+    /**
+     * <pre>
+     * 过期时间,单位毫秒
+     * </pre>
+     *
+     * <code>int64 timeout = 14;</code>
+     * @return The timeout.
+     */
+    long getTimeout();
   }
   /**
    * Protobuf type {@code MQEntity}
@@ -389,6 +399,11 @@ public final class MQMessage {
             case 104: {
 
               transferType_ = input.readInt32();
+              break;
+            }
+            case 112: {
+
+              timeout_ = input.readInt64();
               break;
             }
             default: {
@@ -563,7 +578,7 @@ public final class MQMessage {
     }
     /**
      * <pre>
-     * 消费者设置 queue, 1 永久 2 临时
+     * 消费者设置 queue, 1 永久 2 临时 3 延时队列
      * </pre>
      *
      * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -585,7 +600,7 @@ public final class MQMessage {
     }
     /**
      * <pre>
-     * 消费者设置 queue, 1 永久 2 临时
+     * 消费者设置 queue, 1 永久 2 临时 3 延时队列
      * </pre>
      *
      * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -597,7 +612,7 @@ public final class MQMessage {
     }
     /**
      * <pre>
-     * 消费者设置 queue, 1 永久 2 临时
+     * 消费者设置 queue, 1 永久 2 临时 3 延时队列
      * </pre>
      *
      * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -614,7 +629,7 @@ public final class MQMessage {
     }
     /**
      * <pre>
-     * 消费者设置 queue, 1 永久 2 临时
+     * 消费者设置 queue, 1 永久 2 临时 3 延时队列
      * </pre>
      *
      * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -758,7 +773,7 @@ public final class MQMessage {
     private int msgType_;
     /**
      * <pre>
-     * 消息类型 1 生产着 2 消费者
+     * 消息类型 1 生产着 2 消费者 3 Ack 确认消息
      * </pre>
      *
      * <code>int32 msgType = 8;</code>
@@ -871,6 +886,21 @@ public final class MQMessage {
       return transferType_;
     }
 
+    public static final int TIMEOUT_FIELD_NUMBER = 14;
+    private long timeout_;
+    /**
+     * <pre>
+     * 过期时间,单位毫秒
+     * </pre>
+     *
+     * <code>int64 timeout = 14;</code>
+     * @return The timeout.
+     */
+    @Override
+    public long getTimeout() {
+      return timeout_;
+    }
+
     private byte memoizedIsInitialized = -1;
     @Override
     public final boolean isInitialized() {
@@ -926,6 +956,9 @@ public final class MQMessage {
       }
       if (transferType_ != 0) {
         output.writeInt32(13, transferType_);
+      }
+      if (timeout_ != 0L) {
+        output.writeInt64(14, timeout_);
       }
       unknownFields.writeTo(output);
     }
@@ -994,6 +1027,10 @@ public final class MQMessage {
         size += com.google.protobuf.CodedOutputStream
           .computeInt32Size(13, transferType_);
       }
+      if (timeout_ != 0L) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(14, timeout_);
+      }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
       return size;
@@ -1035,6 +1072,8 @@ public final class MQMessage {
           != other.getPort()) return false;
       if (getTransferType()
           != other.getTransferType()) return false;
+      if (getTimeout()
+          != other.getTimeout()) return false;
       if (!unknownFields.equals(other.unknownFields)) return false;
       return true;
     }
@@ -1079,6 +1118,9 @@ public final class MQMessage {
       hash = (53 * hash) + getPort();
       hash = (37 * hash) + TRANSFERTYPE_FIELD_NUMBER;
       hash = (53 * hash) + getTransferType();
+      hash = (37 * hash) + TIMEOUT_FIELD_NUMBER;
+      hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
+          getTimeout());
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
       return hash;
@@ -1259,6 +1301,8 @@ public final class MQMessage {
 
         transferType_ = 0;
 
+        timeout_ = 0L;
+
         return this;
       }
 
@@ -1304,6 +1348,7 @@ public final class MQMessage {
         result.address_ = address_;
         result.port_ = port_;
         result.transferType_ = transferType_;
+        result.timeout_ = timeout_;
         onBuilt();
         return result;
       }
@@ -1400,6 +1445,9 @@ public final class MQMessage {
         }
         if (other.getTransferType() != 0) {
           setTransferType(other.getTransferType());
+        }
+        if (other.getTimeout() != 0L) {
+          setTimeout(other.getTimeout());
         }
         this.mergeUnknownFields(other.unknownFields);
         onChanged();
@@ -1701,7 +1749,7 @@ public final class MQMessage {
       }
       /**
        * <pre>
-       * 消费者设置 queue, 1 永久 2 临时
+       * 消费者设置 queue, 1 永久 2 临时 3 延时队列
        * </pre>
        *
        * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -1723,7 +1771,7 @@ public final class MQMessage {
       }
       /**
        * <pre>
-       * 消费者设置 queue, 1 永久 2 临时
+       * 消费者设置 queue, 1 永久 2 临时 3 延时队列
        * </pre>
        *
        * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -1735,7 +1783,7 @@ public final class MQMessage {
       }
       /**
        * <pre>
-       * 消费者设置 queue, 1 永久 2 临时
+       * 消费者设置 queue, 1 永久 2 临时 3 延时队列
        * </pre>
        *
        * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -1752,7 +1800,7 @@ public final class MQMessage {
       }
       /**
        * <pre>
-       * 消费者设置 queue, 1 永久 2 临时
+       * 消费者设置 queue, 1 永久 2 临时 3 延时队列
        * </pre>
        *
        * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -1777,7 +1825,7 @@ public final class MQMessage {
       }
       /**
        * <pre>
-       * 消费者设置 queue, 1 永久 2 临时
+       * 消费者设置 queue, 1 永久 2 临时 3 延时队列
        * </pre>
        *
        * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -1800,7 +1848,7 @@ public final class MQMessage {
       }
       /**
        * <pre>
-       * 消费者设置 queue, 1 永久 2 临时
+       * 消费者设置 queue, 1 永久 2 临时 3 延时队列
        * </pre>
        *
        * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -1816,7 +1864,7 @@ public final class MQMessage {
       }
       /**
        * <pre>
-       * 消费者设置 queue, 1 永久 2 临时
+       * 消费者设置 queue, 1 永久 2 临时 3 延时队列
        * </pre>
        *
        * <code>map&lt;string, int32&gt; queueInfo = 3;</code>
@@ -2110,7 +2158,7 @@ public final class MQMessage {
       private int msgType_ ;
       /**
        * <pre>
-       * 消息类型 1 生产着 2 消费者
+       * 消息类型 1 生产着 2 消费者 3 Ack 确认消息
        * </pre>
        *
        * <code>int32 msgType = 8;</code>
@@ -2122,7 +2170,7 @@ public final class MQMessage {
       }
       /**
        * <pre>
-       * 消息类型 1 生产着 2 消费者
+       * 消息类型 1 生产着 2 消费者 3 Ack 确认消息
        * </pre>
        *
        * <code>int32 msgType = 8;</code>
@@ -2137,7 +2185,7 @@ public final class MQMessage {
       }
       /**
        * <pre>
-       * 消息类型 1 生产着 2 消费者
+       * 消息类型 1 生产着 2 消费者 3 Ack 确认消息
        * </pre>
        *
        * <code>int32 msgType = 8;</code>
@@ -2405,6 +2453,49 @@ public final class MQMessage {
         onChanged();
         return this;
       }
+
+      private long timeout_ ;
+      /**
+       * <pre>
+       * 过期时间,单位毫秒
+       * </pre>
+       *
+       * <code>int64 timeout = 14;</code>
+       * @return The timeout.
+       */
+      @Override
+      public long getTimeout() {
+        return timeout_;
+      }
+      /**
+       * <pre>
+       * 过期时间,单位毫秒
+       * </pre>
+       *
+       * <code>int64 timeout = 14;</code>
+       * @param value The timeout to set.
+       * @return This builder for chaining.
+       */
+      public Builder setTimeout(long value) {
+        
+        timeout_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * 过期时间,单位毫秒
+       * </pre>
+       *
+       * <code>int64 timeout = 14;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearTimeout() {
+        
+        timeout_ = 0L;
+        onChanged();
+        return this;
+      }
       @Override
       public final Builder setUnknownFields(
           final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -2477,16 +2568,16 @@ public final class MQMessage {
       descriptor;
   static {
     String[] descriptorData = {
-      "\n\rMessage.proto\"\250\002\n\010MQEntity\022\n\n\002id\030\001 \001(\t" +
+      "\n\rMessage.proto\"\271\002\n\010MQEntity\022\n\n\002id\030\001 \001(\t" +
       "\022\r\n\005queue\030\002 \003(\t\022+\n\tqueueInfo\030\003 \003(\0132\030.MQE" +
       "ntity.QueueInfoEntry\022\013\n\003msg\030\004 \001(\t\022\020\n\010dat" +
       "eTime\030\005 \001(\t\022\r\n\005isAck\030\006 \001(\010\022\013\n\003ack\030\007 \001(\010\022" +
       "\017\n\007msgType\030\010 \001(\005\022\017\n\007errFlag\030\t \001(\010\022\020\n\010con" +
       "nType\030\n \001(\005\022\017\n\007address\030\013 \001(\t\022\014\n\004port\030\014 \001" +
-      "(\005\022\024\n\014transferType\030\r \001(\005\0320\n\016QueueInfoEnt" +
-      "ry\022\013\n\003key\030\001 \001(\t\022\r\n\005value\030\002 \001(\005:\0028\001B\'\n\030co" +
-      "m.krest.mq.core.entityB\tMQMessageH\001b\006pro" +
-      "to3"
+      "(\005\022\024\n\014transferType\030\r \001(\005\022\017\n\007timeout\030\016 \001(" +
+      "\003\0320\n\016QueueInfoEntry\022\013\n\003key\030\001 \001(\t\022\r\n\005valu" +
+      "e\030\002 \001(\005:\0028\001B\'\n\030com.krest.mq.core.entityB" +
+      "\tMQMessageH\001b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -2497,7 +2588,7 @@ public final class MQMessage {
     internal_static_MQEntity_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_MQEntity_descriptor,
-        new String[] { "Id", "Queue", "QueueInfo", "Msg", "DateTime", "IsAck", "Ack", "MsgType", "ErrFlag", "ConnType", "Address", "Port", "TransferType", });
+        new String[] { "Id", "Queue", "QueueInfo", "Msg", "DateTime", "IsAck", "Ack", "MsgType", "ErrFlag", "ConnType", "Address", "Port", "TransferType", "Timeout", });
     internal_static_MQEntity_QueueInfoEntry_descriptor =
       internal_static_MQEntity_descriptor.getNestedTypes().get(0);
     internal_static_MQEntity_QueueInfoEntry_fieldAccessorTable = new

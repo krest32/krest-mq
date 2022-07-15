@@ -7,15 +7,15 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class MQTCPClientHandler extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
+public class MqTcpClientHandler extends SimpleChannelInboundHandler<MQMessage.MQEntity> {
 
     private ChannelListener inactiveListener = null;
     MQMessage.MQEntity mqEntity;
 
-    public MQTCPClientHandler() {
+    public MqTcpClientHandler() {
     }
 
-    public MQTCPClientHandler(ChannelListener channelListener, MQMessage.MQEntity mqEntity) {
+    public MqTcpClientHandler(ChannelListener channelListener, MQMessage.MQEntity mqEntity) {
         this.inactiveListener = channelListener;
         this.mqEntity = mqEntity;
     }

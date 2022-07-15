@@ -3,6 +3,7 @@ package com.krest.mq.core.runnable;
 import com.krest.file.handler.KrestFileHandler;
 import com.krest.mq.core.cache.CacheFileConfig;
 import com.krest.mq.core.cache.LocalCache;
+import com.krest.mq.core.entity.DelayMessage;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.entity.MQRespFuture;
 import io.netty.channel.Channel;
@@ -10,50 +11,48 @@ import io.netty.channel.ChannelFuture;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
 
 @Slf4j
-public class TcpSendMsgRunnable implements Runnable {
+public class TcpDelayMsgSendRunnable implements Runnable {
 
     String queueName;
 
-    public TcpSendMsgRunnable(@NonNull String queueName) {
+    public TcpDelayMsgSendRunnable(@NonNull String queueName) {
         this.queueName = queueName;
     }
 
     @Override
     public void run() {
         while (true) {
-            MQMessage.MQEntity mqEntity = null;
+            DelayMessage delayMessage = null;
             try {
-                mqEntity = LocalCache.queueMap.get(queueName).takeFirst();
+                System.out.println(LocalCache.delayQueueMap);
+                System.out.println(queueName);
+                System.out.println(LocalCache.delayQueueMap.get(queueName));
+                delayMessage = LocalCache.delayQueueMap.get(queueName).take();
                 List<Channel> channels = LocalCache.queueCtxListMap.get(queueName);
                 if (null != channels && channels.size() > 0) {
                     // 开始发送
-                    if (sendMsg(mqEntity, channels)) {
+                    if (sendMsg(delayMessage.getMqEntity(), channels)) {
                         // 更新本地的缓存的偏移量
-                        LocalCache.queueInfoMap.get(queueName).setOffset(mqEntity.getId());
+                        LocalCache.queueInfoMap.get(queueName).setOffset(delayMessage.getMqEntity().getId());
                         KrestFileHandler.saveObject(CacheFileConfig.queueInfoFilePath, LocalCache.queueInfoMap);
                     } else {
-                        LocalCache.queueMap.get(queueName).putFirst(mqEntity);
+                        LocalCache.delayQueueMap.get(queueName).put(delayMessage);
                     }
                 } else {
                     log.info("不存在客户端, 等待15s, 继续执行");
-                    LocalCache.queueMap.get(queueName).putFirst(mqEntity);
+                    LocalCache.delayQueueMap.get(queueName).put(delayMessage);
                     Thread.sleep(15 * 1000);
                 }
             } catch (InterruptedException | ExecutionException e) {
                 log.error(e.getMessage(), e);
                 // 如果在去除消息后发生了异常，仍然需要吧消息返回队列
-                if (null != mqEntity) {
-                    try {
-                        LocalCache.queueMap.get(queueName).putFirst(mqEntity);
-                    } catch (InterruptedException interruptedException) {
-                        log.error(e.getMessage(), e);
-                    }
+                if (null != delayMessage) {
+                    LocalCache.delayQueueMap.get(queueName).put(delayMessage);
                 }
             }
         }

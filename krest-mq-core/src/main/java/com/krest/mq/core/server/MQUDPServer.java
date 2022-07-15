@@ -2,7 +2,7 @@ package com.krest.mq.core.server;
 
 import com.krest.mq.core.config.MQBuilderConfig;
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.handler.MQUDPServerHandler;
+import com.krest.mq.core.handler.MqUdpServerHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -38,7 +38,7 @@ public class MQUDPServer implements MQServer {
                         // 加入一个Decoder
                         ch.pipeline().addLast(new ProtobufDecoder(MQMessage.MQEntity.getDefaultInstance()));
                         ch.pipeline().addLast(new ProtobufEncoder());
-                        ch.pipeline().addLast(new MQUDPServerHandler());
+                        ch.pipeline().addLast(new MqUdpServerHandler());
                     }
                 })
                 .option(ChannelOption.SO_BROADCAST, true)

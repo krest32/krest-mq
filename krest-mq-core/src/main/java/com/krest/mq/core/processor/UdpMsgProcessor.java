@@ -140,7 +140,7 @@ public class UdpMsgProcessor {
             // 判断队列是否已经存在
             if (null == LocalCache.queueMap.get(queueName)) {
                 LocalCache.queueInfoMap.put(queueName,
-                        new QueueInfo(queueName, val == 1 ? QueueType.PERMANENT : QueueType.TEMPORARY, ""));
+                        new QueueInfo(queueName, val == 1 ? QueueType.PERMANENT : QueueType.TEMPORARY, "", ""));
             } else {
                 log.info("队列 [ {} ] 已经存在", queueName);
             }

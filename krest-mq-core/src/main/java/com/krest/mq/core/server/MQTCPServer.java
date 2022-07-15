@@ -11,7 +11,7 @@ import com.krest.mq.core.entity.QueueInfo;
 import com.krest.mq.core.entity.QueueType;
 import com.krest.mq.core.config.MQBuilderConfig;
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.handler.MQTCPServerHandler;
+import com.krest.mq.core.handler.MqTcpServerHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -23,6 +23,7 @@ import io.netty.handler.codec.protobuf.ProtobufEncoder;
 import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Iterator;
 import java.util.List;
@@ -61,7 +62,7 @@ public class MQTCPServer implements MQServer {
                         ch.pipeline().addLast(new ProtobufDecoder(MQMessage.MQEntity.getDefaultInstance()));
                         ch.pipeline().addLast(new ProtobufVarint32LengthFieldPrepender());//解决粘包半包编码器
                         ch.pipeline().addLast(new ProtobufEncoder());
-                        ch.pipeline().addLast(new MQTCPServerHandler());
+                        ch.pipeline().addLast(new MqTcpServerHandler());
                     }
                 });
 
@@ -106,6 +107,11 @@ public class MQTCPServer implements MQServer {
                 if (!queueInfo.getType().equals(QueueType.TEMPORARY)) {
                     // 开始构建队列
                     BlockingDeque<MQMessage.MQEntity> curBlockQueue = new LinkedBlockingDeque<>();
+
+                    if (StringUtils.isBlank(queueInfo.getOffset())) {
+                        continue;
+                    }
+
                     List<String> queueJsonData = KrestFileHandler.readData(
                             CacheFileConfig.queueCacheDatePath + queueName, queueInfo.getOffset());
 

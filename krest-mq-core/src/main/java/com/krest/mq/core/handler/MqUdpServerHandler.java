@@ -12,9 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.*;
 
 @Slf4j
-public class MQUDPServerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
+public class MqUdpServerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
 
-    public MQUDPServerHandler() {
+    public MqUdpServerHandler() {
     }
 
     @Override

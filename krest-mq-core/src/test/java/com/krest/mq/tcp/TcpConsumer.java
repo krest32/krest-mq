@@ -1,15 +1,6 @@
 package com.krest.mq.tcp;
 
 
-import com.krest.mq.core.client.MQClient;
-import com.krest.mq.core.client.MQClientFactory;
-import com.krest.mq.core.config.MQBuilderConfig;
-import com.krest.mq.core.entity.ConnType;
-import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.handler.MQTCPClientHandler;
-
-import java.util.UUID;
-
 public class TcpConsumer {
     public static void main(String[] args) {
 

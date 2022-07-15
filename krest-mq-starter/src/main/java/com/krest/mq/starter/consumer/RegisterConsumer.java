@@ -42,7 +42,19 @@ public class RegisterConsumer implements BeanPostProcessor {
                     KrestMQListener listener = curMethod.getAnnotation(KrestMQListener.class);
                     String queueName = listener.queue();
                     QueueType queueType = listener.queueType();
-                    queueInfo.put(queueName, queueType.equals(QueueType.PERMANENT) ? 1 : 2);
+                    int val = 0;
+                    switch (queueType) {
+                        case PERMANENT:
+                            val = 1;
+                            break;
+                        case TEMPORARY:
+                            val = 2;
+                            break;
+                        case DELAY:
+                            val = 3;
+                            break;
+                    }
+                    queueInfo.put(queueName, val);
                     if (queues.add(queueName)) {
                         queueMethod.put(queueName, curMethod);
                     } else {

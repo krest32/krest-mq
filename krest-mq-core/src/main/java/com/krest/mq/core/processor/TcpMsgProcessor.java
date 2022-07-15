@@ -7,7 +7,6 @@ import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.entity.QueueInfo;
 import com.krest.mq.core.entity.QueueType;
 import com.krest.mq.core.exeutor.LocalExecutor;
-import com.krest.mq.core.handler.RespFutureHandler;
 import com.krest.mq.core.runnable.*;
 import com.krest.mq.core.utils.DateUtils;
 import io.netty.channel.Channel;
@@ -15,6 +14,7 @@ import io.netty.channel.ChannelHandlerContext;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
+import java.util.concurrent.DelayQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 
 /**
@@ -87,7 +87,7 @@ public class TcpMsgProcessor {
         // 判断 消息队列 是否存在
         ProtocolStringList toQueueList = mqEntity.getQueueList();
         for (String curQueueName : toQueueList) {
-            if (LocalCache.queueMap.get(curQueueName) == null) {
+            if (LocalCache.queueInfoMap.get(curQueueName) == null) {
                 handlerErr(ctx, mqEntity, "msg queue does not exist!");
                 return;
             }
@@ -102,7 +102,6 @@ public class TcpMsgProcessor {
                 if (MQNormalConfig.defaultAckQueue.equals(queueName)) {
                     continue;
                 }
-
                 // 将消息放入到队列当中，已经对于 队列不存在的情况作处理，此处不作任何处理
                 LocalExecutor.TcpExecutor.execute(new TcpPutMsgRunnable(queueName, mqEntity));
             }
@@ -153,21 +152,53 @@ public class TcpMsgProcessor {
             channels.add(ctx.channel());
             LocalCache.queueCtxListMap.put(queueName, channels);
 
-            if (LocalCache.queueMap.get(queueName) == null) {
-                LocalCache.queueInfoMap.put(queueName, new QueueInfo(queueName, val == 1 ? QueueType.PERMANENT : QueueType.TEMPORARY, ""));
-                // 如果不存在队列 就进行创建queue
-                LocalCache.queueMap.put(queueName, new LinkedBlockingDeque<>());
-
-                log.info("队列 [{}] 开始推送", queueName);
+            // 开始创建消息队列
+            LocalCache.queueInfoMap.put(queueName, getQueueInfo(queueName, val));
+            // 如果不存在队列 就进行创建queue, 并开启监听
+            if (LocalCache.queueInfoMap.get(queueName).getType().equals(QueueType.DELAY)) {
+                if (LocalCache.queueMap.get(queueName) != null) {
+                    log.error(queueName + ": 定义为延时队列，但是存在普通队列的 ");
+                }
+                if (LocalCache.delayQueueMap.get(queueName) == null) {
+                    // 新建延时队列
+                    log.info("new delay queue : {}", queueName);
+                    LocalCache.delayQueueMap.put(queueName, new DelayQueue<>());
+                }
+                LocalExecutor.TcpDelayExecutor.execute(new TcpDelayMsgSendRunnable(queueName));
             } else {
-                log.info("队列 [ {} ] 已经存在", queueName);
+                if (LocalCache.queueMap.get(queueName) == null) {
+                    log.info("new normal queue : {}", queueName);
+                    LocalCache.queueMap.put(queueName, new LinkedBlockingDeque<>());
+                }
+                LocalExecutor.TcpExecutor.execute(new TcpSendMsgRunnable(queueName));
             }
-            // 开启推送模式
-            LocalExecutor.TcpExecutor.execute(new TcpSendMsgRunnable(queueName));
         }
-        LocalCache.ctxQueueListMap.put(ctx.channel(), queueNameList);
+
+
         // 异步 开启同步任务
+        LocalCache.ctxQueueListMap.put(ctx.channel(), queueNameList);
         LocalExecutor.TcpExecutor.execute(new SynchCacheRunnable());
+    }
+
+    private static QueueInfo getQueueInfo(String queueName, int val) {
+        QueueInfo queueInfo = new QueueInfo();
+        queueInfo.setName(queueName);
+        switch (val) {
+            case 1:
+                queueInfo.setType(QueueType.PERMANENT);
+                break;
+            case 2:
+                queueInfo.setType(QueueType.TEMPORARY);
+                break;
+            case 3:
+                queueInfo.setType(QueueType.DELAY);
+                break;
+            default:
+                log.error("unknown queue type:{}", queueName);
+                queueInfo.setType(QueueType.TEMPORARY);
+                break;
+        }
+        return queueInfo;
     }
 }
 

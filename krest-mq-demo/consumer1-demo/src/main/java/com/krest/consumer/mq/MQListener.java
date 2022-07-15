@@ -39,4 +39,15 @@ public class MQListener {
         }
     }
 
+    @KrestMQListener(queue = "demo2", queueType = QueueType.DELAY)
+    public void channelRead2(ChannelHandlerContext ctx, MQMessage.MQEntity response) throws Exception {
+        log.info("demo2 get msg : " + response.getMsg());
+        if (response.getIsAck()) {
+            Thread.sleep(1000);
+            ctx.writeAndFlush(MQMessage.MQEntity.newBuilder()
+                    .setId(response.getId())
+                    .setMsgType(3).build());
+        }
+    }
+
 }

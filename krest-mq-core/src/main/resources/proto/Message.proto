@@ -15,7 +15,7 @@ message MQEntity {
     string id = 1;
     // 插入消息队列
     repeated string queue = 2;
-    // 消费者设置 queue, 1 永久 2 临时
+    // 消费者设置 queue, 1 永久 2 临时 3 延时队列
     map<string, int32 > queueInfo = 3;
     // 消息内容
     string msg = 4;
@@ -36,5 +36,7 @@ message MQEntity {
     int32  port = 12;
     // 消息的发送方式 1, 单点 2，广播
     int32 transferType = 13;
+    // 过期时间,单位毫秒
+    int64 timeout = 14;
 }
 
