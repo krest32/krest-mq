@@ -16,29 +16,31 @@ import java.util.UUID;
 public class RegisterProducer {
 
     private KrestMQProperties config;
+    private IdWorker idWorker;
 
-    public RegisterProducer(KrestMQProperties config) {
+    public RegisterProducer(KrestMQProperties config, IdWorker idWorker) {
         this.config = config;
+        this.idWorker = idWorker;
     }
 
     public MQTCPClient getMqProducer() {
+        MQMessage.MQEntity registerMsg = registerMsg();
+        MQTCPClient producerClient = new MQTCPClient(config.getHost(), config.getPort(), registerMsg);
+        producerClient.connect(new ProducerChannelInitializer(
+                producerClient.getInactiveListener(), registerMsg));
+        return producerClient;
+    }
 
+    /**
+     * 设置注册的 Msg
+     */
+    private MQMessage.MQEntity registerMsg() {
         MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
-        MQMessage.MQEntity request = builder.setId(UUID.randomUUID().toString())
+        return builder.setId(String.valueOf(this.idWorker.nextId()))
                 .setIsAck(true)
                 .setMsgType(1)
                 .setDateTime(DateUtils.getNowDate())
                 .addQueue(MQNormalConfig.defaultAckQueue)
                 .build();
-
-        MQTCPClient producerClient = new MQTCPClient(config.getHost(), config.getPort(), request);
-        ChannelListener inactiveListener = producerClient.getInactiveListener();
-        producerClient.connect(new ProducerChannelInitializer(inactiveListener, request));
-        return producerClient;
-    }
-
-    public IdWorker getIdWorker() {
-        IdWorker idWorker = new IdWorker(config.getWorkerId(), config.getDatacenterId(), 1);
-        return idWorker;
     }
 }

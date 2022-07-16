@@ -5,6 +5,7 @@ import com.krest.mq.core.cache.CacheFileConfig;
 import com.krest.mq.core.cache.LocalCache;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.entity.MQRespFuture;
+import com.krest.mq.core.utils.MsgSendUtils;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import lombok.NonNull;
@@ -63,20 +64,20 @@ public class TcpSendMsgRunnable implements Runnable {
         boolean flag = true;
         // 如果是单点发送
         if (mqEntity.getTransferType() == 1) {
-            Channel channel = randomChannel(channels);
+            Channel channel = MsgSendUtils.randomChannel(channels);
             if (mqEntity.getIsAck()) {
-                flag = ackSendMode(channel, mqEntity);
+                flag = MsgSendUtils.ackSendMode(channel, mqEntity);
             } else {
-                flag = normalSendMode(channel, mqEntity);
+                flag = MsgSendUtils.normalSendMode(channel, mqEntity);
             }
             // 如果是广播发送
         } else {
             for (Channel channel : channels) {
                 if (mqEntity.getIsAck()) {
                     // ack 机制判断发送模式
-                    flag = ackSendMode(channel, mqEntity);
+                    flag = MsgSendUtils.ackSendMode(channel, mqEntity);
                 } else {
-                    flag = normalSendMode(channel, mqEntity);
+                    flag = MsgSendUtils.normalSendMode(channel, mqEntity);
                     if (!flag) {
                         return false;
                     }
@@ -84,50 +85,5 @@ public class TcpSendMsgRunnable implements Runnable {
             }
         }
         return flag;
-    }
-
-    private boolean normalSendMode(Channel channel, MQMessage.MQEntity mqEntity) throws ExecutionException, InterruptedException {
-        int tryCount = 0;
-        while (tryCount < 3) {
-            ChannelFuture future = channel.writeAndFlush(mqEntity);
-            future.get();
-            if (future.isSuccess()) {
-                return true;
-            }
-            tryCount++;
-        }
-        return false;
-    }
-
-
-    private Channel randomChannel(List<Channel> channels) {
-        return channels.get(new Random().nextInt(channels.size()));
-    }
-
-    /**
-     * ack机制： 发送失败后，会进行重试
-     */
-    private boolean ackSendMode(Channel channel, MQMessage.MQEntity mqEntity) {
-        int tryCnt = 0;
-        while (tryCnt < 3) {
-            try {
-                MQRespFuture respFuture = new MQRespFuture(mqEntity.getId(), 0);
-                LocalCache.respFutureHandler.register(mqEntity.getId(), respFuture);
-                channel.writeAndFlush(mqEntity);
-                if (respFuture.getTimeout() == 0) {
-                    respFuture.get();
-                } else {
-                    respFuture.get(respFuture.getTimeout());
-                }
-                return true;
-                // 发送失败就进行重试
-            } catch (Exception e) {
-                log.error(e.getMessage(), e);
-            } catch (Throwable throwable) {
-                log.error(throwable.getMessage(), throwable);
-            }
-            tryCnt++;
-        }
-        return false;
     }
 }

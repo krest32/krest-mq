@@ -53,6 +53,16 @@ public class MQRespFuture {
         }
     }
 
+    public boolean isSuccess() {
+        // 等待结果
+        try {
+            countDownLatch.await();
+        } catch (InterruptedException e) {
+            log.error(e.getMessage(), e);
+        }
+        return state == STATE_SUCCESS;
+    }
+
     /**
      * 等待多长时间然后获取结果
      */
@@ -82,5 +92,4 @@ public class MQRespFuture {
     public boolean isDone() {
         return state != STATE_AWAIT;
     }
-
 }

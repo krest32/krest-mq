@@ -21,7 +21,7 @@ import java.util.concurrent.LinkedBlockingDeque;
  * 消息处理中心
  */
 @Slf4j
-public class TcpMsgProcessor {
+public class TcpServerMsgProcessor {
 
 
     /**
@@ -33,12 +33,7 @@ public class TcpMsgProcessor {
         System.out.println(entity);
         System.out.println("----------------------");
 
-        // 先排除异常情况
-        // 1. 没有设定消息的来源
-        if (entity.getMsgType() == 0) {
-            handlerErr(ctx, entity, "unknown msg type");
-            return;
-        }
+
         // 开始根据消息类型处理消息
         // 1 代表生产则
         // 2 代表消费者
@@ -74,7 +69,8 @@ public class TcpMsgProcessor {
                 .setMsg(errorMsg)
                 .setDateTime(DateUtils.getNowDate())
                 .build();
-        ctx.writeAndFlush(response);
+        System.out.println(response);
+//        ctx.writeAndFlush(response);
     }
 
 
@@ -97,7 +93,6 @@ public class TcpMsgProcessor {
         // 整理消息一次放入到每个消息队列中
         ProtocolStringList queueNames = mqEntity.getQueueList();
         if (!queueNames.isEmpty()) {
-
             for (String queueName : queueNames) {
                 if (MQNormalConfig.defaultAckQueue.equals(queueName)) {
                     continue;
@@ -107,14 +102,13 @@ public class TcpMsgProcessor {
             }
         }
 
-        // 回复生产者
+        // 回复消息： 不需要
         if (mqEntity.getIsAck()) {
             MQMessage.MQEntity response = MQMessage.MQEntity.newBuilder()
                     .setId(mqEntity.getId())
-                    .setAck(true)
+                    .setMsgType(3)
                     .setDateTime(DateUtils.getNowDate())
                     .build();
-
             System.out.println("返回确认消息");
             System.out.println(response);
             ctx.writeAndFlush(response);

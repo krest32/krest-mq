@@ -24,7 +24,7 @@ public class MQTCPClient implements MQClient {
 
     ChannelListener inactiveListener;
     private Bootstrap bootstrap;
-    private Channel channel;
+    public Channel channel;
     EventLoopGroup workGroup = new NioEventLoopGroup();
 
 

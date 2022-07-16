@@ -14,7 +14,6 @@ public class RespFutureHandler {
         }
     }
 
-
     // 将结果放入到 map 集合中
     public void register(String id, MQRespFuture respFuture) {
         LocalCache.respFutureMap.put(id, respFuture);

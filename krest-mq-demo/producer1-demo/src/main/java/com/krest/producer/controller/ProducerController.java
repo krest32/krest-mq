@@ -4,6 +4,7 @@ import com.krest.mq.core.client.MQTCPClient;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.IdWorker;
+import com.krest.mq.starter.common.KrestMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +23,9 @@ public class ProducerController {
     @Autowired
     MQTCPClient mqClient;
 
+    @Autowired
+    KrestMQTemplate mqTemplate;
+
     @GetMapping("send/{queue}/{msg}/{transfer}/{timeout}")
     public String sendMsg(@PathVariable String queue,
                           @PathVariable String msg,
@@ -39,6 +43,17 @@ public class ProducerController {
                 .setDateTime(DateUtils.getNowDate())
                 .build();
         mqClient.sendMsg(request);
+        return msg;
+    }
+
+
+    @GetMapping("templateSendMsg/{queue}/{msg}/{transfer}/{timeout}")
+    public String templateSendMsg(@PathVariable String queue,
+                                  @PathVariable String msg,
+                                  @PathVariable String transfer,
+                                  @PathVariable String timeout) throws Throwable {
+
+        mqTemplate.sendMsg("haha", "demo", true);
         return msg;
     }
 }

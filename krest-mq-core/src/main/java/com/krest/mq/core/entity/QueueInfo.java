@@ -20,7 +20,4 @@ public class QueueInfo implements Serializable {
 
     // 记录当前 queue 的偏移量， 也就是 msg 的 id
     String offset;
-
-    // 如果是延迟队列，那么必须要有死信队列
-    String endQueue;
 }
