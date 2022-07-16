@@ -31,8 +31,9 @@
    5. 持久化机制：同步(暂时不支持异步，异步可能会持久化失败)
    6. 持久化消息超过设定的持久化最大值以后，程序自动覆盖最旧的缓存消息文件
 9. 自定义 Spring Starter 整合 Spring Boot
-10. 采用Snake.yml作为配置，方便 MQ 进行二次改造（日后可集成Spring Boot），
+10. 采用Snake.yml作为配置，方便 MQ 进行二次改造（日后可集成Spring Boot）
+11. 添加 KrestMQTemplate 用于操作 MQ
 
 ## 未来目标
-2. Clinet 基于模版方法操作 MQ
-3. 集群模式，实现高可用
+1. 镜像集群模式，实现高可用
+2. Cluster集群模式
