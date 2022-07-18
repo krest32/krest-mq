@@ -18,7 +18,8 @@ public class MQConsumerRunnable implements Runnable {
     Object bean;
     Map<String, Integer> queueInfo;
 
-    public MQConsumerRunnable(String host, int port, Map<String, Integer> queueInfo, Object bean, IdWorker idWorker) {
+    public MQConsumerRunnable(String host, int port, Map<String, Integer> queueInfo,
+                              Object bean, IdWorker idWorker) {
         this.host = host;
         this.port = port;
         this.bean = bean;
@@ -33,17 +34,22 @@ public class MQConsumerRunnable implements Runnable {
     public void run() {
         log.info("consumer connect server, host : {} , port : {} ", host, port);
 
+        MQMessage.MQEntity request = registerMSg();
+        MQTCPClient mqConsumer = new MQTCPClient(host, port, request);
+        ChannelListener inactiveListener = mqConsumer.getInactiveListener();
+        mqConsumer.connect(new ConsumerChannelInitializer(inactiveListener, bean, request));
+        mqConsumer.sendMsg(request);
+    }
+
+
+    private MQMessage.MQEntity registerMSg() {
         MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
-        MQMessage.MQEntity request = builder
+        return builder
                 .setId(String.valueOf(idWorker.nextId()))
                 .setDateTime(DateUtils.getNowDate())
                 .setMsgType(2)
                 .setIsAck(true)
                 .putAllQueueInfo(this.queueInfo)
                 .build();
-        MQTCPClient mqConsumer = new MQTCPClient(host, port, request);
-        ChannelListener inactiveListener = mqConsumer.getInactiveListener();
-        mqConsumer.connect(new ConsumerChannelInitializer(inactiveListener, bean, request));
-        mqConsumer.sendMsg(request);
     }
 }

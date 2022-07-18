@@ -1,23 +1,41 @@
 package com.krest.mq.starter.common;
 
+import com.krest.mq.core.client.MQTCPClient;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.entity.MQRespFuture;
 import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.IdWorker;
 import com.krest.mq.core.utils.MsgSendUtils;
+import com.krest.mq.starter.producer.MQProducerRunnable;
+import com.krest.mq.starter.properties.KrestMQProperties;
 import io.netty.channel.Channel;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 
+@Slf4j
 public class KrestMQTemplate {
 
-    Channel channel;
-
+    public Channel channel;
     IdWorker idWorker;
+    MQTCPClient tcpClient;
 
-    public KrestMQTemplate(Channel channel, IdWorker idWorker) {
-        this.channel = channel;
+    public KrestMQTemplate(IdWorker idWorker, KrestMQProperties config) {
         this.idWorker = idWorker;
+        MQProducerRunnable runnable = new MQProducerRunnable(
+                config.getHost(), config.getPort(), this.idWorker, this.tcpClient);
+        FutureTask<MQTCPClient> futureTask = new FutureTask(runnable);
+        Thread t = new Thread(futureTask);
+        t.start();
+        try {
+            this.tcpClient = futureTask.get();
+        } catch (InterruptedException e) {
+            log.error(e.getMessage(), e);
+        } catch (ExecutionException e) {
+            log.error(e.getMessage(), e);
+        }
     }
 
     public void sendMsg(String msg, String queueName) throws Throwable {
@@ -35,9 +53,9 @@ public class KrestMQTemplate {
                 .setDateTime(DateUtils.getNowDate())
                 .build();
         if (isAck) {
-            return MsgSendUtils.ackSendMode(this.channel, mqEntity);
+            return MsgSendUtils.ackSendMode(this.tcpClient.channel, mqEntity);
         } else {
-            return MsgSendUtils.normalSendMode(this.channel, mqEntity);
+            return MsgSendUtils.normalSendMode(this.tcpClient.channel, mqEntity);
         }
     }
 }

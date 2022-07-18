@@ -94,6 +94,14 @@ public class MQTCPServer implements MQServer {
             LocalCache.queueInfoMap = new ConcurrentHashMap<>();
         }
 
+        // 还原队列信息
+        recoverQueueData();
+
+
+
+    }
+
+    private void recoverQueueData() {
         LocalCache.queueMap.put(MQNormalConfig.defaultAckQueue, new LinkedBlockingDeque<>(100));
         // 输出展示
         System.out.println(LocalCache.queueInfoMap);
