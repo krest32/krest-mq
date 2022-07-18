@@ -35,5 +35,4 @@
 11. 添加 KrestMQTemplate 用于操作 MQ
 
 ## 未来目标
-1. 镜像集群模式，实现高可用
-2. Cluster集群模式
+1. Cluster集群模式
