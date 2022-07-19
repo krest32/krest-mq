@@ -57,6 +57,7 @@ public class KrestFileHandler {
             String[] tempCsvRowData = idxText.get(i).split(",");
             idContentList.add(tempCsvRowData);
         }
+
         String[] lastIdxContent = idxText.get(idxText.size() - 1).split(",");
         lastIdxContent[2] = contentId;
         lastIdxContent[3] = String.valueOf(new File(lastIdxContent[1]).length());
@@ -64,6 +65,7 @@ public class KrestFileHandler {
 
         curFile = lastIdxContent[1];
         idContentList.add(lastIdxContent);
+
         // 判断当前文件的大小
         if (Integer.valueOf(lastIdxContent[3]) >= KrestFileConfig.maxFileSize) {
             // 生成下一个文件信息
@@ -93,10 +95,8 @@ public class KrestFileHandler {
             // 记录新的 index 文件
             curFile = newIdxContext[1];
         }
-        // 更新 index 信息
+        // 同时更新 index 信息
         CSVTool.write(idxFileName, KrestFileConfig.indexFileHeader, idContentList);
-        System.out.println("写入文件：");
-        System.out.println(content);
         return FileWriterUtils.bufferedWriterMethod(curFile, content, true);
     }
 

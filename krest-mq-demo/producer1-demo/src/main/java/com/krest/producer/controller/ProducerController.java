@@ -1,59 +1,37 @@
 package com.krest.producer.controller;
 
-import com.krest.mq.core.client.MQTCPClient;
-import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.utils.DateUtils;
-import com.krest.mq.core.utils.IdWorker;
+import com.krest.mq.core.entity.TransferType;
 import com.krest.mq.starter.common.KrestMQTemplate;
+import com.krest.producer.RequestEntity;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
-@RequestMapping("com/krest/producer")
 @RestController
+@RequestMapping("producer")
 public class ProducerController {
-
-    @Autowired
-    IdWorker idWorker;
-
-    @Autowired
-    MQTCPClient mqClient;
 
     @Autowired
     KrestMQTemplate mqTemplate;
 
-    @GetMapping("send/{queue}/{msg}/{transfer}/{timeout}")
-    public String sendMsg(@PathVariable String queue,
-                          @PathVariable String msg,
-                          @PathVariable String transfer,
-                          @PathVariable String timeout) throws InterruptedException {
 
-        MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
-        MQMessage.MQEntity request = builder.setId(String.valueOf(idWorker.nextId()))
-                .setIsAck(false)
-                .setMsgType(1)
-                .addQueue(queue)
-                .setMsg(msg)
-                .setTimeout(Long.valueOf(timeout))
-                .setTransferType(Integer.valueOf(transfer))
-                .setDateTime(DateUtils.getNowDate())
-                .build();
-        mqClient.sendMsg(request);
-        return msg;
+    @GetMapping("hello")
+    public String hello() {
+        return "hello";
     }
 
+    @PostMapping("sendMsg")
+    public String templateSendMsg(@RequestBody RequestEntity entity) {
 
-    @GetMapping("templateSendMsg/{queue}/{msg}/{transfer}/{timeout}")
-    public String templateSendMsg(@PathVariable String queue,
-                                  @PathVariable String msg,
-                                  @PathVariable String transfer,
-                                  @PathVariable String timeout) throws Throwable {
+        Long start = System.currentTimeMillis();
+        for (int i=0; i<100; i++){
+            mqTemplate.sendMsg(entity.getMsg(), entity.getQueue(),
+                    entity.getTransferType() == 1 ? TransferType.POINT : TransferType.BROADCAST,
+                    entity.getIsAck() == 1 ? true : false, entity.getTimeout());
 
-        mqTemplate.sendMsg("haha", "demo", true);
-        return msg;
+        }
+        Long end = System.currentTimeMillis();
+        double ans = (end - start) * 0.001;
+
+        return String.valueOf(ans);
     }
 }

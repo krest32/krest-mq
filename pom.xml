@@ -13,18 +13,17 @@
         <module>krest-mq-core</module>
         <module>krest-mq-starter</module>
         <module>krest-mq-demo</module>
-        <module>krest-mq-admin</module>
         <module>krest-mq-demo/consumer1-demo</module>
         <module>krest-mq-demo/consumer2-demo</module>
-        <module>krest-file</module>
         <module>krest-mq-demo/producer1-demo</module>
+        <module>krest-file</module>
+        <module>krest-mq-admin</module>
     </modules>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-parent</artifactId>
         <version>2.2.6.RELEASE</version>
-        <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
     <properties>
@@ -35,8 +34,9 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.test.skip>true</maven.test.skip>
 
+        <spring.version>2.2.6.RELEASE</spring.version>
         <kryo-serializers.version>0.36</kryo-serializers.version>
-        <netty-all.version>4.1.70.Final</netty-all.version>
+        <netty-all.version>4.1.76.Final</netty-all.version>
         <jboss-marshalling.version>2.0.9.Final</jboss-marshalling.version>
         <reflectasm.version>1.11.0</reflectasm.version>
         <junit.version>4.12</junit.version>
@@ -53,8 +53,8 @@
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-web</artifactId>
+                <version>${spring.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
@@ -71,8 +71,6 @@
                 <artifactId>logback-classic</artifactId>
                 <version>${logback.version}</version>
             </dependency>
-
-
             <dependency>
                 <groupId>de.javakaffee</groupId>
                 <artifactId>kryo-serializers</artifactId>

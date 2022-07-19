@@ -1,15 +1,8 @@
 package com.krest.mq.core.processor;
 
-import com.google.protobuf.ProtocolStringList;
-import com.krest.mq.core.cache.LocalCache;
-import com.krest.mq.core.config.MQNormalConfig;
+import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.entity.QueueInfo;
-import com.krest.mq.core.entity.QueueType;
-import com.krest.mq.core.exeutor.LocalExecutor;
-import com.krest.mq.core.runnable.*;
 import com.krest.mq.core.utils.DateUtils;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,10 +15,7 @@ public class TcpClientMsgProcessor {
      */
 
     public static void msgCenter(ChannelHandlerContext ctx, MQMessage.MQEntity entity) {
-        System.out.println("客戶端获取消息：");
-        System.out.println("----------------------");
-        System.out.println(entity);
-        System.out.println("----------------------");
+
 
         // 先排除异常情况
         // 1. 没有设定消息的来源
@@ -50,7 +40,7 @@ public class TcpClientMsgProcessor {
 
     private static void responseMsg(MQMessage.MQEntity entity) {
         // 添加到回复的队列当中
-        LocalCache.responseQueue.add(entity);
+        BrokerLocalCache.responseQueue.add(entity);
     }
 
 

@@ -26,6 +26,7 @@ public class MQRespFuture {
 
     public MQRespFuture(String msgId, int timeout) {
         this.msgId = msgId;
+        this.timeout = timeout;
         countDownLatch = new CountDownLatch(1);
         state = STATE_AWAIT;
     }
@@ -56,9 +57,9 @@ public class MQRespFuture {
     public boolean isSuccess() {
         // 等待结果
         try {
-            countDownLatch.await();
+            countDownLatch.await(this.timeout, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
-            log.error(e.getMessage(), e);
+            log.error("{} wait resp timeout", this.msgId);
         }
         return state == STATE_SUCCESS;
     }
@@ -68,7 +69,6 @@ public class MQRespFuture {
      */
     public String get(int timeout) throws Throwable {
         boolean awaitSuccess = true;
-
         try {
             awaitSuccess = countDownLatch.await(timeout, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {

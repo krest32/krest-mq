@@ -31,7 +31,7 @@ public class ConsumerHandlerAdapter extends SimpleChannelInboundHandler<MQMessag
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, MQMessage.MQEntity response) throws Exception {
-        System.out.println("消费者获取信息：" + response);
+//        System.out.println("消费者获取信息：" + response);
         Method[] declaredMethods = this.bean.getClass().getDeclaredMethods();
         for (String queue : response.getQueueList()) {
             for (Method method : declaredMethods) {

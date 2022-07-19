@@ -5,16 +5,15 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.krest.file.handler.KrestFileHandler;
 import com.krest.mq.core.cache.CacheFileConfig;
-import com.krest.mq.core.cache.LocalCache;
+import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.config.MQNormalConfig;
 import com.krest.mq.core.entity.QueueInfo;
 import com.krest.mq.core.entity.QueueType;
-import com.krest.mq.core.config.MQBuilderConfig;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.handler.MqTcpServerHandler;
+import com.krest.mq.core.runnable.UdpServerRunnable;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -34,15 +33,17 @@ import java.util.concurrent.*;
 public class MQTCPServer implements MQServer {
     NioEventLoopGroup bossGroup;
     NioEventLoopGroup workGroup;
-
-    MQBuilderConfig mqConfig;
+    Channel channel;
+    // 当前会启动 tcp 与 udp 两个 server
+    Integer port;
 
     private MQTCPServer() {
     }
 
-    public MQTCPServer(MQBuilderConfig mqConfig) {
-        this.mqConfig = mqConfig;
+    public MQTCPServer(Integer port) {
+        this.port = port;
     }
+
 
     @Override
     public void start() {
@@ -51,7 +52,7 @@ public class MQTCPServer implements MQServer {
         ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(bossGroup, workGroup)
                 .channel(NioServerSocketChannel.class)
-                .localAddress(mqConfig.getPort())
+                .localAddress(this.port)
                 .childHandler(new ChannelInitializer<SocketChannel>() {
 
                     @Override
@@ -65,12 +66,14 @@ public class MQTCPServer implements MQServer {
                         ch.pipeline().addLast(new MqTcpServerHandler());
                     }
                 });
-
         try {
             ChannelFuture future = serverBootstrap.bind().sync();
-            log.info("mq server start at : {} ", mqConfig.getPort());
+            this.channel = future.channel();
+            // 初始化数据要在之前
             initData();
-            future.channel().closeFuture().sync();
+            log.info("mq tcp server start at : {} ", this.port);
+            // 线程会阻塞在这么
+            this.channel.closeFuture().sync();
         } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
         } finally {
@@ -85,28 +88,32 @@ public class MQTCPServer implements MQServer {
     }
 
     private void initData() {
-        System.out.println("初始化数据：");
+        log.info("开始初始化数据...");
         // 由于 channel 未能序列化，所以仅仅保存当前 queue的信息
-        LocalCache.queueInfoMap = (ConcurrentHashMap<String, QueueInfo>)
+        BrokerLocalCache.queueInfoMap = (ConcurrentHashMap<String, QueueInfo>)
                 KrestFileHandler.readObject(CacheFileConfig.queueInfoFilePath);
 
-        if (null == LocalCache.queueInfoMap) {
-            LocalCache.queueInfoMap = new ConcurrentHashMap<>();
+        if (null == BrokerLocalCache.queueInfoMap) {
+            BrokerLocalCache.queueInfoMap = new ConcurrentHashMap<>();
         }
 
         // 还原队列信息
         recoverQueueData();
 
-
-
+        log.info("初始化数据完成");
+        // 异步的方式启动 udpServer
+//        UdpServerRunnable runnable = new UdpServerRunnable(this.port);
+//        FutureTask<MQUDPServer> futureTask = new FutureTask<>(runnable);
+//        Thread t = new Thread(futureTask);
+//        t.start();
     }
 
-    private void recoverQueueData() {
-        LocalCache.queueMap.put(MQNormalConfig.defaultAckQueue, new LinkedBlockingDeque<>(100));
-        // 输出展示
-        System.out.println(LocalCache.queueInfoMap);
-        Iterator<Map.Entry<String, QueueInfo>> iterator = LocalCache.queueInfoMap.entrySet().iterator();
 
+    private void recoverQueueData() {
+
+        BrokerLocalCache.queueMap.put(MQNormalConfig.defaultAckQueue, new LinkedBlockingDeque<>(100));
+        Iterator<Map.Entry<String, QueueInfo>> iterator = BrokerLocalCache.queueInfoMap.entrySet().iterator();
+        System.out.println(BrokerLocalCache.queueInfoMap);
         while (iterator.hasNext()) {
             Map.Entry<String, QueueInfo> entry = iterator.next();
             String queueName = entry.getKey();
@@ -115,7 +122,6 @@ public class MQTCPServer implements MQServer {
                 if (!queueInfo.getType().equals(QueueType.TEMPORARY)) {
                     // 开始构建队列
                     BlockingDeque<MQMessage.MQEntity> curBlockQueue = new LinkedBlockingDeque<>();
-
                     if (StringUtils.isBlank(queueInfo.getOffset())) {
                         continue;
                     }
@@ -131,11 +137,12 @@ public class MQTCPServer implements MQServer {
                         MQMessage.MQEntity mqEntity = tempBuilder.build();
                         if (Long.valueOf(queueInfo.getOffset())
                                 .compareTo(Long.valueOf(mqEntity.getId())) < 0) {
-                            System.out.println(mqEntity.getId());
                             curBlockQueue.offer(mqEntity);
                         }
                     }
-                    LocalCache.queueMap.put(queueName, curBlockQueue);
+
+                    log.info(queueName + " : " + curBlockQueue.size());
+                    BrokerLocalCache.queueMap.put(queueName, curBlockQueue);
                 }
             } catch (InvalidProtocolBufferException e) {
                 log.error(e.getMessage(), e);

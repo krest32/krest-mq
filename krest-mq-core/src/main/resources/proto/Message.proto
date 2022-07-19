@@ -31,9 +31,6 @@ message MQEntity {
     bool errFlag = 9;
     // 传输方式 1 tcp, 2 udp
     int32 connType = 10;
-    // 废弃参数，待删除
-    string address = 11;
-    int32  port = 12;
     // 消息的发送方式 1, 单点 2，广播
     int32 transferType = 13;
     // 过期时间,单位毫秒

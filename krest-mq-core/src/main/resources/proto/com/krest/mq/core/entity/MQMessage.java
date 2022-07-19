@@ -225,32 +225,6 @@ public final class MQMessage {
 
     /**
      * <pre>
-     * 废弃参数，待删除
-     * </pre>
-     *
-     * <code>string address = 11;</code>
-     * @return The address.
-     */
-    java.lang.String getAddress();
-    /**
-     * <pre>
-     * 废弃参数，待删除
-     * </pre>
-     *
-     * <code>string address = 11;</code>
-     * @return The bytes for address.
-     */
-    com.google.protobuf.ByteString
-        getAddressBytes();
-
-    /**
-     * <code>int32 port = 12;</code>
-     * @return The port.
-     */
-    int getPort();
-
-    /**
-     * <pre>
      * 消息的发送方式 1, 单点 2，广播
      * </pre>
      *
@@ -286,7 +260,6 @@ public final class MQMessage {
       queue_ = com.google.protobuf.LazyStringArrayList.EMPTY;
       msg_ = "";
       dateTime_ = "";
-      address_ = "";
     }
 
     @java.lang.Override
@@ -383,17 +356,6 @@ public final class MQMessage {
             case 80: {
 
               connType_ = input.readInt32();
-              break;
-            }
-            case 90: {
-              java.lang.String s = input.readStringRequireUtf8();
-
-              address_ = s;
-              break;
-            }
-            case 96: {
-
-              port_ = input.readInt32();
               break;
             }
             case 104: {
@@ -814,63 +776,6 @@ public final class MQMessage {
       return connType_;
     }
 
-    public static final int ADDRESS_FIELD_NUMBER = 11;
-    private volatile java.lang.Object address_;
-    /**
-     * <pre>
-     * 废弃参数，待删除
-     * </pre>
-     *
-     * <code>string address = 11;</code>
-     * @return The address.
-     */
-    @java.lang.Override
-    public java.lang.String getAddress() {
-      java.lang.Object ref = address_;
-      if (ref instanceof java.lang.String) {
-        return (java.lang.String) ref;
-      } else {
-        com.google.protobuf.ByteString bs = 
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        address_ = s;
-        return s;
-      }
-    }
-    /**
-     * <pre>
-     * 废弃参数，待删除
-     * </pre>
-     *
-     * <code>string address = 11;</code>
-     * @return The bytes for address.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getAddressBytes() {
-      java.lang.Object ref = address_;
-      if (ref instanceof java.lang.String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        address_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-
-    public static final int PORT_FIELD_NUMBER = 12;
-    private int port_;
-    /**
-     * <code>int32 port = 12;</code>
-     * @return The port.
-     */
-    @java.lang.Override
-    public int getPort() {
-      return port_;
-    }
-
     public static final int TRANSFERTYPE_FIELD_NUMBER = 13;
     private int transferType_;
     /**
@@ -948,12 +853,6 @@ public final class MQMessage {
       if (connType_ != 0) {
         output.writeInt32(10, connType_);
       }
-      if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(address_)) {
-        com.google.protobuf.GeneratedMessageV3.writeString(output, 11, address_);
-      }
-      if (port_ != 0) {
-        output.writeInt32(12, port_);
-      }
       if (transferType_ != 0) {
         output.writeInt32(13, transferType_);
       }
@@ -1016,13 +915,6 @@ public final class MQMessage {
         size += com.google.protobuf.CodedOutputStream
           .computeInt32Size(10, connType_);
       }
-      if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(address_)) {
-        size += com.google.protobuf.GeneratedMessageV3.computeStringSize(11, address_);
-      }
-      if (port_ != 0) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(12, port_);
-      }
       if (transferType_ != 0) {
         size += com.google.protobuf.CodedOutputStream
           .computeInt32Size(13, transferType_);
@@ -1066,10 +958,6 @@ public final class MQMessage {
           != other.getErrFlag()) return false;
       if (getConnType()
           != other.getConnType()) return false;
-      if (!getAddress()
-          .equals(other.getAddress())) return false;
-      if (getPort()
-          != other.getPort()) return false;
       if (getTransferType()
           != other.getTransferType()) return false;
       if (getTimeout()
@@ -1112,10 +1000,6 @@ public final class MQMessage {
           getErrFlag());
       hash = (37 * hash) + CONNTYPE_FIELD_NUMBER;
       hash = (53 * hash) + getConnType();
-      hash = (37 * hash) + ADDRESS_FIELD_NUMBER;
-      hash = (53 * hash) + getAddress().hashCode();
-      hash = (37 * hash) + PORT_FIELD_NUMBER;
-      hash = (53 * hash) + getPort();
       hash = (37 * hash) + TRANSFERTYPE_FIELD_NUMBER;
       hash = (53 * hash) + getTransferType();
       hash = (37 * hash) + TIMEOUT_FIELD_NUMBER;
@@ -1295,10 +1179,6 @@ public final class MQMessage {
 
         connType_ = 0;
 
-        address_ = "";
-
-        port_ = 0;
-
         transferType_ = 0;
 
         timeout_ = 0L;
@@ -1345,8 +1225,6 @@ public final class MQMessage {
         result.msgType_ = msgType_;
         result.errFlag_ = errFlag_;
         result.connType_ = connType_;
-        result.address_ = address_;
-        result.port_ = port_;
         result.transferType_ = transferType_;
         result.timeout_ = timeout_;
         onBuilt();
@@ -1435,13 +1313,6 @@ public final class MQMessage {
         }
         if (other.getConnType() != 0) {
           setConnType(other.getConnType());
-        }
-        if (!other.getAddress().isEmpty()) {
-          address_ = other.address_;
-          onChanged();
-        }
-        if (other.getPort() != 0) {
-          setPort(other.getPort());
         }
         if (other.getTransferType() != 0) {
           setTransferType(other.getTransferType());
@@ -2284,133 +2155,6 @@ public final class MQMessage {
         return this;
       }
 
-      private java.lang.Object address_ = "";
-      /**
-       * <pre>
-       * 废弃参数，待删除
-       * </pre>
-       *
-       * <code>string address = 11;</code>
-       * @return The address.
-       */
-      public java.lang.String getAddress() {
-        java.lang.Object ref = address_;
-        if (!(ref instanceof java.lang.String)) {
-          com.google.protobuf.ByteString bs =
-              (com.google.protobuf.ByteString) ref;
-          java.lang.String s = bs.toStringUtf8();
-          address_ = s;
-          return s;
-        } else {
-          return (java.lang.String) ref;
-        }
-      }
-      /**
-       * <pre>
-       * 废弃参数，待删除
-       * </pre>
-       *
-       * <code>string address = 11;</code>
-       * @return The bytes for address.
-       */
-      public com.google.protobuf.ByteString
-          getAddressBytes() {
-        java.lang.Object ref = address_;
-        if (ref instanceof String) {
-          com.google.protobuf.ByteString b = 
-              com.google.protobuf.ByteString.copyFromUtf8(
-                  (java.lang.String) ref);
-          address_ = b;
-          return b;
-        } else {
-          return (com.google.protobuf.ByteString) ref;
-        }
-      }
-      /**
-       * <pre>
-       * 废弃参数，待删除
-       * </pre>
-       *
-       * <code>string address = 11;</code>
-       * @param value The address to set.
-       * @return This builder for chaining.
-       */
-      public Builder setAddress(
-          java.lang.String value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  
-        address_ = value;
-        onChanged();
-        return this;
-      }
-      /**
-       * <pre>
-       * 废弃参数，待删除
-       * </pre>
-       *
-       * <code>string address = 11;</code>
-       * @return This builder for chaining.
-       */
-      public Builder clearAddress() {
-        
-        address_ = getDefaultInstance().getAddress();
-        onChanged();
-        return this;
-      }
-      /**
-       * <pre>
-       * 废弃参数，待删除
-       * </pre>
-       *
-       * <code>string address = 11;</code>
-       * @param value The bytes for address to set.
-       * @return This builder for chaining.
-       */
-      public Builder setAddressBytes(
-          com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  checkByteStringIsUtf8(value);
-        
-        address_ = value;
-        onChanged();
-        return this;
-      }
-
-      private int port_ ;
-      /**
-       * <code>int32 port = 12;</code>
-       * @return The port.
-       */
-      @java.lang.Override
-      public int getPort() {
-        return port_;
-      }
-      /**
-       * <code>int32 port = 12;</code>
-       * @param value The port to set.
-       * @return This builder for chaining.
-       */
-      public Builder setPort(int value) {
-        
-        port_ = value;
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>int32 port = 12;</code>
-       * @return This builder for chaining.
-       */
-      public Builder clearPort() {
-        
-        port_ = 0;
-        onChanged();
-        return this;
-      }
-
       private int transferType_ ;
       /**
        * <pre>
@@ -2568,16 +2312,15 @@ public final class MQMessage {
       descriptor;
   static {
     java.lang.String[] descriptorData = {
-      "\n\rMessage.proto\"\271\002\n\010MQEntity\022\n\n\002id\030\001 \001(\t" +
+      "\n\rMessage.proto\"\232\002\n\010MQEntity\022\n\n\002id\030\001 \001(\t" +
       "\022\r\n\005queue\030\002 \003(\t\022+\n\tqueueInfo\030\003 \003(\0132\030.MQE" +
       "ntity.QueueInfoEntry\022\013\n\003msg\030\004 \001(\t\022\020\n\010dat" +
       "eTime\030\005 \001(\t\022\r\n\005isAck\030\006 \001(\010\022\013\n\003ack\030\007 \001(\010\022" +
       "\017\n\007msgType\030\010 \001(\005\022\017\n\007errFlag\030\t \001(\010\022\020\n\010con" +
-      "nType\030\n \001(\005\022\017\n\007address\030\013 \001(\t\022\014\n\004port\030\014 \001" +
-      "(\005\022\024\n\014transferType\030\r \001(\005\022\017\n\007timeout\030\016 \001(" +
-      "\003\0320\n\016QueueInfoEntry\022\013\n\003key\030\001 \001(\t\022\r\n\005valu" +
-      "e\030\002 \001(\005:\0028\001B\'\n\030com.krest.mq.core.entityB" +
-      "\tMQMessageH\001b\006proto3"
+      "nType\030\n \001(\005\022\024\n\014transferType\030\r \001(\005\022\017\n\007tim" +
+      "eout\030\016 \001(\003\0320\n\016QueueInfoEntry\022\013\n\003key\030\001 \001(" +
+      "\t\022\r\n\005value\030\002 \001(\005:\0028\001B\'\n\030com.krest.mq.cor" +
+      "e.entityB\tMQMessageH\001b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -2588,7 +2331,7 @@ public final class MQMessage {
     internal_static_MQEntity_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_MQEntity_descriptor,
-        new java.lang.String[] { "Id", "Queue", "QueueInfo", "Msg", "DateTime", "IsAck", "Ack", "MsgType", "ErrFlag", "ConnType", "Address", "Port", "TransferType", "Timeout", });
+        new java.lang.String[] { "Id", "Queue", "QueueInfo", "Msg", "DateTime", "IsAck", "Ack", "MsgType", "ErrFlag", "ConnType", "TransferType", "Timeout", });
     internal_static_MQEntity_QueueInfoEntry_descriptor =
       internal_static_MQEntity_descriptor.getNestedTypes().get(0);
     internal_static_MQEntity_QueueInfoEntry_fieldAccessorTable = new

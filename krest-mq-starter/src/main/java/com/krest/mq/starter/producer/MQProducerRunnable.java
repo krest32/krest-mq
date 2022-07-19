@@ -45,7 +45,6 @@ public class MQProducerRunnable implements Callable {
 
     @Override
     public Object call() throws Exception {
-        log.info("consumer connect server, host : {} , port : {} ", host, port);
         MQMessage.MQEntity registerMsg = registerMsg();
         this.mqtcpClient = new MQTCPClient(this.host, this.port, registerMsg);
         this.mqtcpClient.connect(new ProducerChannelInitializer(

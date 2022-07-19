@@ -11,4 +11,6 @@ public class LocalExecutor {
 
     public static ThreadPoolExecutor TcpDelayExecutor = ExecutorFactory.threadPoolExecutor(new ThreadPoolConfig());
 
+    public static ThreadPoolExecutor UdpHandleExecutor = ExecutorFactory.threadPoolExecutor(new ThreadPoolConfig());
+
 }
