@@ -13,4 +13,6 @@ public class LocalExecutor {
 
     public static ThreadPoolExecutor UdpHandleExecutor = ExecutorFactory.threadPoolExecutor(new ThreadPoolConfig());
 
+    public static ThreadPoolExecutor NormalUseExecutor = ExecutorFactory.threadPoolExecutor(new ThreadPoolConfig());
+
 }

@@ -9,6 +9,7 @@ target/
 build/
 build_eclipse/
 out/
+krest-mq-admin2
 
 /logs
 /.metadata

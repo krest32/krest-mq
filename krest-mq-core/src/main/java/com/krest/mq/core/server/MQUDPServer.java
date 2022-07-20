@@ -21,7 +21,7 @@ import java.util.UUID;
 
 @Slf4j
 @Data
-public class MQUDPServer implements MQServer {
+public class MQUDPServer {
     NioEventLoopGroup workGroup;
     public Channel channel;
     Integer port;
@@ -34,7 +34,7 @@ public class MQUDPServer implements MQServer {
     }
 
 
-    @Override
+
     public void start() {
         workGroup = new NioEventLoopGroup();
         Bootstrap bootstrap = new Bootstrap();
@@ -70,17 +70,17 @@ public class MQUDPServer implements MQServer {
 
     private void syncBrokerInfo() {
         // 发送广播信息
-        if (NameServerCache.runningMode.equals(RunningMode.Cluster)) {
-            for (int i = 0; i < NameServerCache.servers.size(); i++) {
-                // 通过 udp 的方式进行链接
-                MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
-                        .setId(UUID.randomUUID().toString())
-                        .setMsg(NameServerCache.servers.get(i)).build();
-                String[] info = NameServerCache.servers.get(i).split(":");
-                String host = info[0];
-                Integer port = Integer.valueOf(info[1]);
-                UdpMsgSendUtils.sendAckMsg(this.channel, host, port, mqEntity);
-            }
-        }
+//        if (NameServerCache.runningMode.equals(RunningMode.Cluster)) {
+//            for (int i = 0; i < NameServerCache.servers.size(); i++) {
+//                // 通过 udp 的方式进行链接
+//                MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
+//                        .setId(UUID.randomUUID().toString())
+//                        .setMsg(NameServerCache.servers.get(i)).build();
+//                String[] info = NameServerCache.servers.get(i).split(":");
+//                String host = info[0];
+//                Integer port = Integer.valueOf(info[1]);
+//                UdpMsgSendUtils.sendAckMsg(this.channel, host, port, mqEntity);
+//            }
+//        }
     }
 }

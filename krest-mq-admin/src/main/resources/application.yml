@@ -1,21 +1,28 @@
 server:
-  port: 8001
+  port: 9001
 
 
 spring:
   application:
     name: mqServer
+  profiles:
+    active: dev
 
 
 
 # krest-mq 配置
 krest:
   mq-server:
-    port: 9001
+    port: 10001
     is-push-mode: true
     cluster:
+      - localhost:9001
       - localhost:9002
       - localhost:9003
+    kids:
+      - 1
+      - 2
+      - 3
     kid: 1
     # 持久化文件存放的目录
     cacheFolder: E:\\Data\\krest-mq\\queue-data\\

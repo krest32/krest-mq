@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 @Slf4j
-public class MQTCPServer implements MQServer {
+public class MQTCPServer {
     NioEventLoopGroup bossGroup;
     NioEventLoopGroup workGroup;
     Channel channel;
@@ -45,7 +45,6 @@ public class MQTCPServer implements MQServer {
     }
 
 
-    @Override
     public void start() {
         bossGroup = new NioEventLoopGroup();
         workGroup = new NioEventLoopGroup();
@@ -113,7 +112,7 @@ public class MQTCPServer implements MQServer {
 
         BrokerLocalCache.queueMap.put(MQNormalConfig.defaultAckQueue, new LinkedBlockingDeque<>(100));
         Iterator<Map.Entry<String, QueueInfo>> iterator = BrokerLocalCache.queueInfoMap.entrySet().iterator();
-        System.out.println(BrokerLocalCache.queueInfoMap);
+        log.info("queue info : " + BrokerLocalCache.queueInfoMap);
         while (iterator.hasNext()) {
             Map.Entry<String, QueueInfo> entry = iterator.next();
             String queueName = entry.getKey();
