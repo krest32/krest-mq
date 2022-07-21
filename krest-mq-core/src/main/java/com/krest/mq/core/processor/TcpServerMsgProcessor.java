@@ -5,7 +5,7 @@ import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.config.MQNormalConfig;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.entity.QueueInfo;
-import com.krest.mq.core.entity.QueueType;
+import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.core.exeutor.LocalExecutor;
 import com.krest.mq.core.runnable.*;
 import com.krest.mq.core.utils.DateUtils;
@@ -24,17 +24,10 @@ import java.util.concurrent.LinkedBlockingDeque;
 public class TcpServerMsgProcessor {
 
 
-    /**
-     * 消息处理逻辑
-     */
     public static void msgCenter(ChannelHandlerContext ctx, MQMessage.MQEntity entity) {
 
-
-        // 开始根据消息类型处理消息
-        // 1 代表生产则
-        // 2 代表消费者
-        int msgType = entity.getMsgType();
-        switch (msgType) {
+        // 开始根据消息类型处理消息 1. 生产者  2. 消费者  3. 回复类型消息
+        switch (entity.getMsgType()) {
             case 1:
                 producer(ctx, entity);
                 break;
@@ -146,7 +139,7 @@ public class TcpServerMsgProcessor {
 
         // 异步 开启同步任务
         BrokerLocalCache.ctxQueueListMap.put(ctx.channel(), queueNameList);
-        LocalExecutor.TcpExecutor.execute(new SynchCacheRunnable());
+        LocalExecutor.TcpExecutor.execute(new SynchLocalDataRunnable());
     }
 
     private static QueueInfo getQueueInfo(String queueName, int val) {

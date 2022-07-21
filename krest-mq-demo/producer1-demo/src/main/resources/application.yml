@@ -9,7 +9,8 @@ spring:
 
 krest:
   mq:
-    host: localhost
-    port: 9001
     workerId: 1
     datacenterId: 1
+    server:
+      - localhost:9001
+      - localhost:9002

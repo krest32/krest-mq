@@ -1,4 +1,4 @@
-package com.krest.mq.admin.entity;
+package com.krest.mq.core.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

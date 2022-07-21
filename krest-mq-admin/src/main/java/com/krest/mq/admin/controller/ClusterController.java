@@ -1,14 +1,16 @@
 package com.krest.mq.admin.controller;
 
-import com.krest.mq.admin.cache.AdminCache;
-import com.krest.mq.admin.entity.MqRequest;
+
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
 import com.krest.mq.admin.util.ClusterUtil;
-import com.krest.mq.admin.util.HttpUtil;
-import com.krest.mq.core.entity.ClusterRole;
+import com.krest.mq.core.cache.AdminServerCache;
+import com.krest.mq.core.entity.ClusterInfo;
+import com.krest.mq.core.enums.ClusterRole;
+import com.krest.mq.core.entity.MqRequest;
 import com.krest.mq.core.entity.ServerInfo;
 import com.krest.mq.core.exeutor.LocalExecutor;
+import com.krest.mq.core.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequestMapping("mq/server")
-public class Controller {
+public class ClusterController {
 
     @Autowired
     MqConfig mqConfig;
@@ -32,44 +34,49 @@ public class Controller {
 
     @GetMapping("cluster/role")
     public String getClusterRole() {
-        return AdminCache.clusterRole.toString();
+        return AdminServerCache.clusterRole.toString();
     }
 
     @PostMapping("register")
-    public String register(@RequestBody ServerInfo serverInfo) throws InterruptedException {
+    public ServerInfo register(@RequestBody ServerInfo serverInfo) throws InterruptedException {
         // 如果正在选择 Leader, 那么就进入等到状态
-        if (AdminCache.clusterRole.equals(ClusterRole.Leader)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
             log.info("receive new service register : " + serverInfo);
-            AdminCache.curServers.add(serverInfo);
+            AdminServerCache.curServers.add(serverInfo);
+            return AdminServerCache.leaderInfo;
         }
-        return AdminCache.clusterRole.toString();
+        // 返回一个空对象
+        return null;
     }
 
     @PostMapping("check/leader")
     public String checkLeader(@RequestBody ServerInfo serverInfo) {
-        if (AdminCache.clusterRole.equals(ClusterRole.Leader)) {
-            if (AdminCache.curServers.add(serverInfo)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+            if (AdminServerCache.curServers.add(serverInfo)) {
                 log.info("receive be lost register : " + serverInfo);
             }
         }
-        AdminCache.resetExpireTime();
+        AdminServerCache.resetExpireTime();
         return "ok";
     }
 
     @PostMapping("check/follower")
     public String checkFollower(@RequestBody ServerInfo serverInfo) {
         // 如果发来的 Leader 信息，不同于自己的认证 Leader, 那么就需要进入重新选举状态
-        if (null != AdminCache.leaderInfo && !serverInfo.equals(AdminCache.leaderInfo)) {
-            log.info("cluster leader have more than one");
-            String reSelectPath = "/mq/server/reselect/leader";
-            for (String server : this.mqConfig.getCluster()) {
-                String targetUrl = "http://" + server + reSelectPath;
-                MqRequest request = new MqRequest(targetUrl, null);
-                HttpUtil.getRequest(request);
+        if (null != AdminServerCache.leaderInfo) {
+            if (!serverInfo.getTargetAddress().equals(AdminServerCache.leaderInfo.getTargetAddress())) {
+                log.info("cluster leader have more than one");
+                String reSelectPath = "/mq/server/reselect/leader";
+                // 通知所有的 server 进入到重新选举的状态
+                for (ServerInfo server : this.mqConfig.getServerList()) {
+                    String targetUrl = "http://" + server.getTargetAddress() + reSelectPath;
+                    MqRequest request = new MqRequest(targetUrl, null);
+                    HttpUtil.getRequest(request);
+                }
             }
         }
         // 重置过期时间
-        AdminCache.resetExpireTime();
+        AdminServerCache.resetExpireTime();
         return "ok";
     }
 
@@ -88,6 +95,14 @@ public class Controller {
         boolean flag = HttpUtil.getRequest(new MqRequest(targetAddress, null));
         // 同意是 0， 不同意为 1
         return flag ? "0" : "1";
+    }
+
+    /**
+     * 同步 cluster info 信息
+     */
+    @PostMapping("synch/cluster-info")
+    public void synchClusterInfo(@RequestBody ClusterInfo clusterInfo) {
+        AdminServerCache.ClusterInfo = clusterInfo;
     }
 }
 

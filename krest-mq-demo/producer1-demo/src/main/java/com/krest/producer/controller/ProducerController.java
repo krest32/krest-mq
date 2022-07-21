@@ -1,8 +1,8 @@
 package com.krest.producer.controller;
 
-import com.krest.mq.core.entity.TransferType;
-import com.krest.mq.starter.common.KrestMQTemplate;
-import com.krest.producer.RequestEntity;
+import com.krest.mq.core.enums.TransferType;
+import com.krest.mq.starter.template.KrestMQTemplate;
+import com.krest.producer.entity.RequestEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 

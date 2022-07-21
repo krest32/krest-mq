@@ -1,7 +1,7 @@
 package com.krest.mq.core.utils;
 
 
-import com.krest.mq.core.cache.NameServerCache;
+import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.entity.MQRespFuture;
 import io.netty.buffer.Unpooled;
@@ -52,7 +52,7 @@ public class UdpMsgSendUtils {
         try {
             // 设置一秒的反馈时间
             MQRespFuture future = new MQRespFuture(mqEntity.getId(), 1000);
-            NameServerCache.udpRespFutureHandler.register(mqEntity.getId(), future);
+            AdminServerCache.udpRespFutureHandler.register(mqEntity.getId(), future);
             channel.writeAndFlush(responseData);
             if (future.isSuccess()) {
                 return true;

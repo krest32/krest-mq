@@ -1,9 +1,10 @@
 package com.krest.mq.admin.util;
 
-import com.krest.mq.admin.cache.AdminCache;
-import com.krest.mq.admin.entity.MqRequest;
-import com.krest.mq.core.entity.ClusterRole;
+import com.krest.mq.core.cache.AdminServerCache;
+import com.krest.mq.core.enums.ClusterRole;
+import com.krest.mq.core.entity.MqRequest;
 import com.krest.mq.core.entity.ServerInfo;
+import com.krest.mq.core.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
@@ -19,31 +20,30 @@ public class ClusterUtil {
         MqRequest request = new MqRequest(
                 "http://" + leaderAddress + detectLeaderPath, serverInfo);
         String response = HttpUtil.postRequest(request);
-        return !StringUtils.isBlank(response);
+        return !"error".equals(response);
     }
 
     public boolean detectFollower(String leaderAddress, ServerInfo serverInfo) {
         MqRequest request = new MqRequest(
                 "http://" + leaderAddress + detectFollowerPath, serverInfo);
         String response = HttpUtil.postRequest(request);
-        return !StringUtils.isBlank(response);
+        return !"error".equals(response);
     }
 
 
     public void initData() {
-        AdminCache.leaderInfo = null;
-        AdminCache.clusterRole = ClusterRole.Observer;
-        AdminCache.selfServerInfo = null;
-        AdminCache.curServers.clear();
-        AdminCache.kidServerMap.clear();
+        AdminServerCache.leaderInfo = null;
+        AdminServerCache.clusterRole = ClusterRole.Observer;
+        AdminServerCache.curServers.clear();
+        AdminServerCache.kidServerMap.clear();
     }
 
     public boolean isReady() {
-        if (AdminCache.isSelectServer) {
+        if (AdminServerCache.isSelectServer) {
             log.info("still in select server....");
             return false;
         }
-        if (AdminCache.isDetectFollower) {
+        if (AdminServerCache.isDetectFollower) {
             log.info("still in detect follower....");
             return false;
         }

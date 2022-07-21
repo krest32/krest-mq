@@ -1,7 +1,7 @@
 package com.krest.consumer.mq;
 
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.entity.QueueType;
+import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.starter.anno.KrestConsumer;
 import com.krest.mq.starter.anno.KrestMQListener;
 import io.netty.channel.ChannelHandlerContext;

@@ -1,4 +1,4 @@
-package com.krest.producer;
+package com.krest.producer.entity;
 
 import lombok.Data;
 import lombok.Getter;

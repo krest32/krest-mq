@@ -1,8 +1,7 @@
 package com.krest.mq.starter.anno;
 
 
-import com.krest.mq.core.entity.QueueType;
-import com.krest.mq.core.entity.TransferType;
+import com.krest.mq.core.enums.QueueType;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

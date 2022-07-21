@@ -1,10 +1,11 @@
-package com.krest.mq.admin.schedul;
+package com.krest.mq.admin.schedule;
 
-import com.krest.mq.admin.cache.AdminCache;
+
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
 import com.krest.mq.admin.util.ClusterUtil;
-import com.krest.mq.core.entity.ClusterRole;
+import com.krest.mq.core.cache.AdminServerCache;
+import com.krest.mq.core.enums.ClusterRole;
 import com.krest.mq.core.entity.ServerInfo;
 import com.krest.mq.core.exeutor.LocalExecutor;
 import com.krest.mq.core.utils.DateUtils;
@@ -25,42 +26,44 @@ public class ScheduleJob {
     @Autowired
     ClusterUtil clusterUtil;
 
-    @Scheduled(cron = "0/10 * * * * ?")
+    @Scheduled(cron = "0/30 * * * * ?")
     public void detectFollower() {
 
         if (!clusterUtil.isReady()) {
             return;
         }
 
-        AdminCache.isDetectFollower = true;
-        if (AdminCache.clusterRole.equals(ClusterRole.Leader)) {
+        AdminServerCache.isDetectFollower = true;
+
+        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
             log.info("start detect follower at : " + DateUtils.getNowDate());
-            log.info("followers : " + AdminCache.curServers);
-            Iterator<ServerInfo> iterator = AdminCache.curServers.iterator();
+            log.info("followers : " + AdminServerCache.curServers);
+            Iterator<ServerInfo> iterator = AdminServerCache.curServers.iterator();
             while (iterator.hasNext()) {
                 ServerInfo curServer = iterator.next();
                 boolean flag = clusterUtil.detectFollower(curServer.getTargetAddress(),
-                        AdminCache.leaderInfo);
+                        AdminServerCache.leaderInfo);
                 if (!flag) {
                     int tryCnt = 0;
                     while (tryCnt < 3) {
                         boolean reFlag = clusterUtil.detectFollower(curServer.getTargetAddress(),
-                                AdminCache.leaderInfo);
+                                AdminServerCache.leaderInfo);
                         if (reFlag) {
                             break;
                         }
                         tryCnt++;
                     }
                     log.info("follower disconnected! : " + curServer);
-                    AdminCache.curServers.remove(curServer);
+                    AdminServerCache.curServers.remove(curServer);
                 }
             }
         }
-        AdminCache.isDetectFollower = false;
+
+        AdminServerCache.isDetectFollower = false;
     }
 
 
-    @Scheduled(cron = "0/10 * * * * ?")
+    @Scheduled(cron = "0/30 * * * * ?")
     public void detectLeader() {
 
         if (!clusterUtil.isReady()) {
@@ -68,24 +71,24 @@ public class ScheduleJob {
         }
         // 如果 leader 的信息为空，那么就开始寻找
         try {
-            if (null == AdminCache.leaderInfo) {
+            if (null == AdminServerCache.leaderInfo) {
                 LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(mqConfig));
             }
 
-            if (!AdminCache.clusterRole.equals(ClusterRole.Leader)) {
+            if (!AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
                 long curMillions = System.currentTimeMillis();
-                if (AdminCache.expireTime == null) {
-                    AdminCache.resetExpireTime();
+                if (AdminServerCache.expireTime == null) {
+                    AdminServerCache.resetExpireTime();
                 }
-                if (curMillions > AdminCache.expireTime) {
+                if (curMillions > AdminServerCache.expireTime) {
                     log.info("过长时间, leader 沒有发送探测报文, follower 发起反向探测");
-                    log.info("开始检测 leader 信息 : " + AdminCache.leaderInfo);
+                    log.info("开始检测 leader 信息 : " + AdminServerCache.leaderInfo);
                     boolean flag = clusterUtil.detectLeader(
-                            AdminCache.leaderInfo.getTargetAddress(), AdminCache.leaderInfo);
+                            AdminServerCache.leaderInfo.getTargetAddress(), AdminServerCache.leaderInfo);
 
                     if (flag) {
                         log.info("反向检测 leader 成功, 重置 follower 反向探测超时时间");
-                        AdminCache.resetExpireTime();
+                        AdminServerCache.resetExpireTime();
                     } else {
                         log.info("反向检测 leader 失败, 开始重新选举 leader ");
                         // 重新设置角色类型，并发起选举

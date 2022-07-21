@@ -8,10 +8,9 @@ import com.krest.mq.core.cache.CacheFileConfig;
 import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.config.MQNormalConfig;
 import com.krest.mq.core.entity.QueueInfo;
-import com.krest.mq.core.entity.QueueType;
+import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.handler.MqTcpServerHandler;
-import com.krest.mq.core.runnable.UdpServerRunnable;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -100,16 +99,11 @@ public class MQTCPServer {
         recoverQueueData();
 
         log.info("初始化数据完成");
-        // 异步的方式启动 udpServer
-//        UdpServerRunnable runnable = new UdpServerRunnable(this.port);
-//        FutureTask<MQUDPServer> futureTask = new FutureTask<>(runnable);
-//        Thread t = new Thread(futureTask);
-//        t.start();
+
     }
 
 
     private void recoverQueueData() {
-
         BrokerLocalCache.queueMap.put(MQNormalConfig.defaultAckQueue, new LinkedBlockingDeque<>(100));
         Iterator<Map.Entry<String, QueueInfo>> iterator = BrokerLocalCache.queueInfoMap.entrySet().iterator();
         log.info("queue info : " + BrokerLocalCache.queueInfoMap);

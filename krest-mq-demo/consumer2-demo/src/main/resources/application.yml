@@ -11,6 +11,6 @@ spring:
 krest:
   mq:
     host: localhost
-    port: 9001
+    port: 10001
     workerId: 1
     datacenterId: 2

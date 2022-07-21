@@ -1,10 +1,11 @@
 package com.krest.mq.starter.consumer;
 
-import com.krest.mq.core.entity.QueueType;
+import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.core.utils.IdWorker;
 import com.krest.mq.starter.anno.KrestConsumer;
 import com.krest.mq.starter.anno.KrestMQListener;
 import com.krest.mq.starter.properties.KrestMQProperties;
+import com.krest.mq.starter.uitls.ConnectUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,8 +25,6 @@ public class RegisterConsumer implements BeanPostProcessor {
     @Autowired
     KrestMQProperties mqProperties;
 
-    @Autowired
-    IdWorker idWorker;
 
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
@@ -65,7 +64,8 @@ public class RegisterConsumer implements BeanPostProcessor {
 
             // 新建客户端
             MQConsumerRunnable runnable = new MQConsumerRunnable(
-                    mqProperties.getHost(), mqProperties.getPort(), queueInfo, bean, idWorker
+                    ConnectUtil.nettyInfo.getAddress(), ConnectUtil.nettyInfo.getTcpPort(), queueInfo, bean,
+                    ConnectUtil.idWorker
             );
 
             Thread thread = new Thread(runnable);

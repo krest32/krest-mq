@@ -1,26 +1,14 @@
 package com.krest.mq.core.processor;
 
-import com.google.protobuf.ProtocolStringList;
 import com.krest.mq.core.cache.BrokerLocalCache;
-import com.krest.mq.core.cache.NameServerCache;
+import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.entity.QueueInfo;
-import com.krest.mq.core.entity.QueueType;
-import com.krest.mq.core.runnable.UdpSendMsgRunnable;
 import com.krest.mq.core.utils.MsgResolver;
-import com.krest.mq.core.exeutor.ExecutorFactory;
-import com.krest.mq.core.exeutor.ThreadPoolConfig;
 import com.krest.mq.core.utils.DateUtils;
-import com.krest.mq.core.utils.UdpMsgSendUtils;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.socket.DatagramPacket;
 import lombok.extern.slf4j.Slf4j;
-
-import java.net.InetSocketAddress;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.*;
 
 
 /**
@@ -64,7 +52,7 @@ public class UdpServerMsgProcessor {
 
     // 添加到回复的队列当中
     private static void handlerAckMsg(MQMessage.MQEntity entity) {
-        NameServerCache.responseQueue.add(entity);
+        AdminServerCache.responseQueue.add(entity);
     }
 
 

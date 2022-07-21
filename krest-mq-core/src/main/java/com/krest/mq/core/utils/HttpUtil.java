@@ -1,7 +1,9 @@
-package com.krest.mq.admin.util;
+package com.krest.mq.core.utils;
 
 import com.alibaba.fastjson.JSONObject;
-import com.krest.mq.admin.entity.MqRequest;
+
+
+import com.krest.mq.core.entity.MqRequest;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 
@@ -21,8 +23,10 @@ public class HttpUtil {
      */
     public static String postRequest(MqRequest mqRequest) {
         // Josn 格式化请求参数
-        RequestBody body = RequestBody.create(MediaType.parse("application/json"),
-                JSONObject.toJSONString(mqRequest.getRequestData()));
+        RequestBody body = RequestBody.create(
+                MediaType.parse("application/json"),
+                JSONObject.toJSONString(mqRequest.getRequestData())
+        );
 
         Request request = new Request.Builder()
                 .url(mqRequest.getTargetUrl())
@@ -35,12 +39,41 @@ public class HttpUtil {
             return response.body().string();
         } catch (IOException e) {
             log.info("can not connect to : {} ", mqRequest.getTargetUrl());
+            return "error";
         } finally {
             if (null != response) {
                 response.close();
             }
         }
-        return null;
+    }
+
+    /**
+     * 发送 post 请求
+     */
+    public static String postRequest(String targetUrl, String requestJson) {
+        // Josn 格式化请求参数
+        RequestBody body = RequestBody.create(
+                MediaType.parse("application/json"),
+                requestJson
+        );
+
+        Request request = new Request.Builder()
+                .url(targetUrl)
+                .post(body)
+                .build();
+
+        Response response = null;
+        try {
+            response = okHttpClient.newCall(request).execute();
+            return response.body().string();
+        } catch (IOException e) {
+            log.info("can not connect to : {} ", targetUrl);
+            return "error";
+        } finally {
+            if (null != response) {
+                response.close();
+            }
+        }
     }
 
     /**

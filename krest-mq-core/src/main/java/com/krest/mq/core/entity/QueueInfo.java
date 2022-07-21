@@ -1,5 +1,6 @@
 package com.krest.mq.core.entity;
 
+import com.krest.mq.core.enums.QueueType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,6 +12,9 @@ import java.io.Serializable;
 @NoArgsConstructor
 public class QueueInfo implements Serializable {
     private static final long serialVersionUID = 1;
+
+    // 当前 server 的 kid
+    String kid;
 
     // queue name
     String name;

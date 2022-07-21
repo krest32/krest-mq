@@ -8,8 +8,22 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ServerInfo {
+    String kid;
     String address;
     Integer port;
+    Integer tcpPort;
+    Integer udpPort;
+
+    public ServerInfo(String address, Integer port) {
+        this.address = address;
+        this.port = port;
+    }
+
+    public ServerInfo(String kid, String address, Integer port) {
+        this.address = address;
+        this.port = port;
+        this.kid = kid;
+    }
 
     public String getTargetAddress() {
         return address + ":" + port;

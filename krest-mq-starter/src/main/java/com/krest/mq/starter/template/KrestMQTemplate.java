@@ -1,33 +1,49 @@
-package com.krest.mq.starter.common;
+package com.krest.mq.starter.template;
 
+import com.alibaba.fastjson.JSONObject;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
 import com.krest.mq.core.client.MQTCPClient;
+import com.krest.mq.core.config.MQNormalConfig;
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.entity.TransferType;
+import com.krest.mq.core.entity.MqRequest;
+import com.krest.mq.core.entity.ServerInfo;
+import com.krest.mq.core.enums.TransferType;
 import com.krest.mq.core.utils.DateUtils;
+import com.krest.mq.core.utils.HttpUtil;
 import com.krest.mq.core.utils.IdWorker;
 import com.krest.mq.core.utils.TcpMsgSendUtils;
 import com.krest.mq.starter.producer.MQProducerRunnable;
 import com.krest.mq.starter.properties.KrestMQProperties;
-import io.netty.channel.Channel;
+import com.krest.mq.starter.uitls.ConnectUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
+import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
-import java.util.concurrent.TimeoutException;
 
 @Slf4j
 public class KrestMQTemplate {
 
-    IdWorker idWorker;
     MQTCPClient tcpClient;
 
-    public KrestMQTemplate(IdWorker idWorker, KrestMQProperties config) {
-        this.idWorker = idWorker;
+
+    public KrestMQTemplate() {
+
+        ConnectUtil.initSever();
+
         MQProducerRunnable runnable = new MQProducerRunnable(
-                config.getHost(), config.getPort(), this.idWorker, this.tcpClient);
+                ConnectUtil.nettyInfo.getAddress(), ConnectUtil.nettyInfo.getTcpPort(),
+                ConnectUtil.idWorker, this.tcpClient, ConnectUtil.registerMsg);
+
         FutureTask<MQTCPClient> futureTask = new FutureTask(runnable);
         Thread t = new Thread(futureTask);
         t.start();
+
 
         try {
             this.tcpClient = futureTask.get();
@@ -67,7 +83,7 @@ public class KrestMQTemplate {
      */
     private boolean buildMQReturn(String msg, String queueName, TransferType transferType, Boolean isAck, Long timeout) {
         MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
-                .setId(String.valueOf(this.idWorker.nextId()))
+                .setId(String.valueOf(ConnectUtil.idWorker.nextId()))
                 .setMsgType(1) // 消息生产者
                 .addQueue(queueName) // 目标队列
                 .setMsg(msg) // 消息内容

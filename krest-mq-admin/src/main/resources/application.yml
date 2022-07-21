@@ -9,21 +9,18 @@ spring:
     active: dev
 
 
-
 # krest-mq 配置
 krest:
   mq-server:
-    port: 10001
-    is-push-mode: true
-    cluster:
-      - localhost:9001
-      - localhost:9002
-      - localhost:9003
-    kids:
-      - 1
-      - 2
-      - 3
+    # 全局唯一的 Server Kid
     kid: 1
+    # 集群信息列表
+    serverList:
+      - {kid: 1, tcpPort: 10001, udpPort: 10001, address: localhost, port: 9001}
+      - {kid: 2, tcpPort: 10002, udpPort: 10002, address: localhost, port: 9002}
+      - {kid: 3, tcpPort: 10003, udpPort: 10003, address: localhost, port: 9003}
+    # 每个queue的最小副本数量，不能大于cluster的最大 server 数量
+    duplicate: 2
     # 持久化文件存放的目录
     cacheFolder: E:\\Data\\krest-mq\\queue-data\\
     # 单个缓存文件的大小，单位字节 4048 也就是 4 * 1024, 4 KB 10 mb 10485760
