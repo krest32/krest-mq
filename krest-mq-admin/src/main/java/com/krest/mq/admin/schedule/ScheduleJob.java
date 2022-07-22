@@ -85,9 +85,9 @@ public class ScheduleJob {
                     log.info("开始检测 leader 信息 : " + AdminServerCache.leaderInfo);
                     boolean flag = clusterUtil.detectLeader(
                             AdminServerCache.leaderInfo.getTargetAddress(), AdminServerCache.leaderInfo);
-
                     if (flag) {
-                        log.info("反向检测 leader 成功, 重置 follower 反向探测超时时间");
+                        log.info("反向检测 leader 成功, 重置 follower 反向探测超时时间, 并重新注册自己");
+                        clusterUtil.registerSelf();
                         AdminServerCache.resetExpireTime();
                     } else {
                         log.info("反向检测 leader 失败, 开始重新选举 leader ");

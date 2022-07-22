@@ -38,8 +38,9 @@ public class AdminServerCache {
     public static ConcurrentHashMap<String, ServerInfo> kidServerMap = new ConcurrentHashMap<>();
 
     // 记录的 Cluster 信息
-    public static ClusterInfo ClusterInfo = new ClusterInfo();
+    public static ClusterInfo clusterInfo = new ClusterInfo();
     public static MQUDPServer mqudpServer;
+    public static boolean isKidBalanced = true;
 
     // 重置反向探测的过期时间
     public static List<Map.Entry<String, ServerInfo>> getSelectServerList() {

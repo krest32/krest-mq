@@ -4,6 +4,7 @@ import com.krest.file.handler.KrestFileHandler;
 import com.krest.mq.core.cache.CacheFileConfig;
 import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.entity.MQMessage;
+import com.krest.mq.core.utils.SyncUtil;
 import com.krest.mq.core.utils.TcpMsgSendUtils;
 import io.netty.channel.Channel;
 import lombok.NonNull;
@@ -32,8 +33,7 @@ public class TcpSendMsgRunnable implements Runnable {
                     // 开始发送
                     if (sendMsg(mqEntity, channels)) {
                         // 更新本地的缓存的偏移量
-                        BrokerLocalCache.queueInfoMap.get(queueName).setOffset(mqEntity.getId());
-                        KrestFileHandler.saveObject(CacheFileConfig.queueInfoFilePath, BrokerLocalCache.queueInfoMap);
+                        SyncUtil.saveQueueInfoMap(queueName, mqEntity.getId());
                     } else {
                         BrokerLocalCache.queueMap.get(queueName).putFirst(mqEntity);
                     }
@@ -57,6 +57,7 @@ public class TcpSendMsgRunnable implements Runnable {
             }
         }
     }
+
 
     private boolean sendMsg(MQMessage.MQEntity mqEntity, List<Channel> channels) throws ExecutionException, InterruptedException, TimeoutException {
         boolean flag = true;

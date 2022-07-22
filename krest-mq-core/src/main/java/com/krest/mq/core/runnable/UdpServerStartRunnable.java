@@ -8,18 +8,18 @@ import java.util.concurrent.Callable;
 /**
  * 生成 udp Server
  */
-public class UdpServerRunnable implements Runnable {
+public class UdpServerStartRunnable implements Runnable {
     Integer port;
 
-    public UdpServerRunnable(Integer port) {
+    public UdpServerStartRunnable(Integer port) {
         this.port = port;
     }
-
 
     @Override
     public void run() {
         MQUDPServer mqudpServer = new MQUDPServer(this.port);
-        mqudpServer.start();
         AdminServerCache.mqudpServer = mqudpServer;
+        AdminServerCache.mqudpServer.start();
+
     }
 }

@@ -4,10 +4,13 @@ import com.alibaba.fastjson.JSONObject;
 
 
 import com.krest.mq.core.entity.MqRequest;
+import com.krest.mq.core.entity.QueueInfo;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 
 import java.io.IOException;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 
@@ -38,7 +41,7 @@ public class HttpUtil {
             response = okHttpClient.newCall(request).execute();
             return response.body().string();
         } catch (IOException e) {
-            log.info("can not connect to : {} ", mqRequest.getTargetUrl());
+            log.error("can not connect to : {} ", mqRequest.getTargetUrl());
             return "error";
         } finally {
             if (null != response) {
@@ -67,7 +70,7 @@ public class HttpUtil {
             response = okHttpClient.newCall(request).execute();
             return response.body().string();
         } catch (IOException e) {
-            log.info("can not connect to : {} ", targetUrl);
+            log.error("can not connect to : {} ", targetUrl);
             return "error";
         } finally {
             if (null != response) {
@@ -84,14 +87,41 @@ public class HttpUtil {
                 .url(mqRequest.getTargetUrl())
                 .get()
                 .build();
+        Response response = null;
         try {
-            okHttpClient.newCall(request).execute();
+            response = okHttpClient.newCall(request).execute();
             return true;
         } catch (IOException e) {
-            log.info("can not connect to : {} ", mqRequest.getTargetUrl());
+            log.error("can not connect to : {} ", mqRequest.getTargetUrl());
             return false;
+        } finally {
+            if (null != response) {
+                response.close();
+            }
         }
     }
 
 
+    /**
+     * 发送 get 请求
+     */
+    public static ConcurrentHashMap<String, JSONObject> getQueueInfo(MqRequest mqRequest) {
+        Request request = new Request.Builder()
+                .url(mqRequest.getTargetUrl())
+                .get()
+                .build();
+        Response response = null;
+        try {
+            response = okHttpClient.newCall(request).execute();
+            String respStr = response.body().string();
+            return JSONObject.parseObject(respStr, ConcurrentHashMap.class);
+        } catch (IOException e) {
+            log.error("can not connect to : {} ", mqRequest.getTargetUrl());
+            return null;
+        } finally {
+            if (null != response) {
+                response.close();
+            }
+        }
+    }
 }

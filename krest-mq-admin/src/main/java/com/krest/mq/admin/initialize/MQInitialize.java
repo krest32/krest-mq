@@ -4,18 +4,16 @@ import com.krest.file.entity.KrestFileConfig;
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
 import com.krest.mq.admin.thread.TCPServerRunnable;
+import com.krest.mq.admin.util.SynchUtils;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.CacheFileConfig;
 import com.krest.mq.core.entity.ServerInfo;
 import com.krest.mq.core.exeutor.LocalExecutor;
-import com.krest.mq.core.runnable.UdpServerRunnable;
-import com.krest.mq.core.server.MQUDPServer;
+import com.krest.mq.core.runnable.UdpServerStartRunnable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.util.concurrent.FutureTask;
 
 @Component
 @Slf4j
@@ -30,14 +28,16 @@ public class MQInitialize implements InitializingBean {
         CacheFileConfig.queueInfoFilePath = config.getCacheFolder() + "queue-info";
         CacheFileConfig.queueCacheDatePath = config.getCacheFolder();
         AdminServerCache.kid = config.getKid();
-        AdminServerCache.ClusterInfo.setDuplicate(config.getDuplicate());
+        AdminServerCache.clusterInfo.setDuplicate(config.getDuplicate());
+        SynchUtils.mqConfig = config;
+
 
         // MQ server 缓存文件配置
         KrestFileConfig.maxFileSize = config.getMaxFileSize();
         KrestFileConfig.maxFileCount = config.getMaxFileCount();
 
         for (ServerInfo serverInfo : config.getServerList()) {
-            if (serverInfo.getKid().equals(config.getKid())){
+            if (serverInfo.getKid().equals(config.getKid())) {
                 AdminServerCache.selfServerInfo = serverInfo;
             }
         }
@@ -46,16 +46,20 @@ public class MQInitialize implements InitializingBean {
         TCPServerRunnable runnable = new TCPServerRunnable(
                 AdminServerCache.selfServerInfo.getTcpPort()
         );
-        Thread t = new Thread(runnable);
-        t.start();
+        Thread tcpThread = new Thread(runnable);
+        tcpThread.start();
+
+        UdpServerStartRunnable udpServerStartRunnable = new UdpServerStartRunnable(
+                AdminServerCache.selfServerInfo.getUdpPort()
+        );
+        Thread udpThread = new Thread(udpServerStartRunnable);
+        udpThread.start();
 
         // 查找 leader
         LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(config));
 
-        UdpServerRunnable udpServerRunnable = new UdpServerRunnable(
-                AdminServerCache.selfServerInfo.getUdpPort()
-        );
-        Thread udpThread = new Thread(udpServerRunnable);
-        udpThread.start();
+        // 然后开始收集每个服务的 queue 信息
+        SynchUtils.collectQueueInfo();
+
     }
 }

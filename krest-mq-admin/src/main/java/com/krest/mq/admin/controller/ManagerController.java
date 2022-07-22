@@ -3,27 +3,33 @@ package com.krest.mq.admin.controller;
 import com.alibaba.fastjson.JSONObject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
-import com.krest.mq.admin.thread.SynchDataRunnable;
+import com.krest.file.util.FileWriterUtils;
+import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.core.cache.AdminServerCache;
+import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.entity.*;
 import com.krest.mq.core.enums.ClusterRole;
-import com.krest.mq.core.exeutor.LocalExecutor;
+import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.HttpUtil;
+import com.krest.mq.core.utils.SyncUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
 
+import java.io.File;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.DelayQueue;
 
 @Slf4j
 @RestController
 @RequestMapping("mq/manager")
 public class ManagerController {
+
+    @Autowired
+    MqConfig mqConfig;
 
 
     @PostMapping("get/leader/info")
@@ -57,12 +63,135 @@ public class ManagerController {
         return null;
     }
 
+    @GetMapping("get/queue/info")
+    public ConcurrentHashMap<String, QueueInfo> getQueueInfo() {
+        for (Map.Entry<String, QueueInfo> entry : BrokerLocalCache.queueInfoMap.entrySet()) {
+            if (StringUtils.isBlank(entry.getValue().getKid())) {
+                entry.getValue().setKid(AdminServerCache.kid);
+            }
+        }
+        return BrokerLocalCache.queueInfoMap;
+    }
+
+
+    /**
+     * 采用 udp 的方式进行传输数据
+     */
+    @PostMapping("synch/queue/data")
+    public String sunchData(@RequestBody String synchInfoJson) {
+        //todo  生成一个新的客户端，然后发送数据到另一台Server上
+        SynchInfo synchInfo = JSONObject.parseObject(synchInfoJson, SynchInfo.class);
+        // 新建队列
+        MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
+                .setId(UUID.randomUUID().toString())
+                .setDateTime(DateUtils.getNowDate())
+                .setMsgType(2)
+                .setIsAck(true)
+                .putQueueInfo(synchInfo.getQueueName(), synchInfo.getType())
+                .build();
+        AdminServerCache.mqudpServer.sendMsg(synchInfo.getAddress(), synchInfo.getPort(), mqEntity);
+
+        // 开始同步数据
+        if (!synchInfo.getType().equals(3)) {
+            BlockingDeque<MQMessage.MQEntity> blockingDeque = BrokerLocalCache.queueMap.get(synchInfo.getQueueName());
+            while (!blockingDeque.isEmpty()) {
+                AdminServerCache.mqudpServer.sendMsg(synchInfo.getAddress(), synchInfo.getPort(), blockingDeque.poll());
+            }
+        } else {
+            // todo 延时队列等待开发
+            DelayQueue<DelayMessage> delayMessages = BrokerLocalCache.delayQueueMap.get(synchInfo.getQueueName());
+
+        }
+
+        // 0 代表成功 1 代表失败
+        return "0";
+    }
+
+
+    @GetMapping("get/queue/info/{queueName}")
+    public Integer getQueue(@PathVariable String queueName) {
+        return BrokerLocalCache.queueMap.get(queueName).size();
+    }
+
+
+    @PostMapping("synch/cluster/info")
+    public void synchClusterInfo(@RequestBody String requestStr) {
+
+        // 同步 cluster 信息
+        AdminServerCache.clusterInfo = JSONObject.parseObject(requestStr, ClusterInfo.class);
+
+        // 同步 offset 信息
+        List<String> queueNames = new ArrayList<>();
+        Iterator<Map.Entry<String, QueueInfo>> iterator = BrokerLocalCache.queueInfoMap.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, QueueInfo> next = iterator.next();
+            queueNames.add(next.getKey());
+        }
+
+        log.info("同步 offset 到本地");
+        // 设置 offset
+        for (String queueName : queueNames) {
+            // 缓存到本地中
+            String offset = String.valueOf(
+                    AdminServerCache.clusterInfo
+                            .getQueueOffsetMap()
+                            .getOrDefault(queueName, -1l));
+            SyncUtil.saveQueueInfoMap(queueName, offset);
+
+            AdminServerCache.clusterInfo.getKidQueueInfo()
+                    .get(AdminServerCache.kid).get(queueName)
+                    .setOffset(offset);
+        }
+
+    }
+
+    /**
+     * todo 清空数据
+     */
+    @PostMapping("clear/overdue/data")
+    public void clearHistoryData(@RequestBody String queueNameListJson) {
+        List<String> queueNameList = (List<String>)
+                JSONObject.parseObject(queueNameListJson, ArrayList.class);
+        log.info("start clear cache data...");
+        clearCacheData(queueNameList);
+        log.info("clear cache data complete");
+    }
+
+    private void clearCacheData(List<String> queueList) {
+        // 删除文件夹
+        String folder = mqConfig.getCacheFolder();
+        for (int i = 0; i < queueList.size(); i++) {
+            File file = new File(folder + "\\" + queueList.get(i));
+            if (file.exists()) {
+                FileWriterUtils.deleteDirectory(file);
+            }
+            // 清空 Tcp 信息
+            // 清除记录的 queue info
+            BrokerLocalCache.queueInfoMap.remove(queueList.get(i));
+            // 清除 普通队列和 临时队列
+            BrokerLocalCache.queueMap.remove(queueList.get(i));
+            // 清除 延时队列
+            BrokerLocalCache.delayQueueMap.remove(queueList.get(i));
+            // 清除 queue 与 ctx 对应 map
+            BrokerLocalCache.queueCtxListMap.remove(queueList.get(i));
+//            // 清除 回复队列
+//            BrokerLocalCache.responseQueue.clear();
+//            // 清除所有的 channel
+//            BrokerLocalCache.clientChannels.clear();
+//            // 清除待处理的 future 信息
+//            BrokerLocalCache.respFutureMap.clear();
+//            // 清除 ctx 与 queue 对应的 map
+//            BrokerLocalCache.ctxQueueListMap.clear();
+        }
+    }
+
     private ServerInfo requestLeader(String requestStr) {
         String targetUrl = "http://" + AdminServerCache.leaderInfo.getTargetAddress() + "/mq/managerget/get/netty/server/info";
         String responseStr = HttpUtil.postRequest(targetUrl, requestStr);
         if (StringUtils.isBlank(responseStr)) {
             return JSONObject.parseObject(responseStr, ServerInfo.class);
         }
+
         return null;
     }
 
@@ -78,93 +207,5 @@ public class ManagerController {
             cnt++;
         }
         return serverInfo;
-    }
-
-
-    @PostMapping("upload/cluster-info")
-    public void uploadClusterInfo(@RequestBody String kid) {
-//        ClusterInfo clusterInfo = AdminServerCache.ClusterInfo;
-//        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
-//            // 先遍历上传的 cluster info,将 上传的 queue info 添加到 集群的配置中
-//            for (QueueInfo queueInfo : queueInfos) {
-//                String curKid = queueInfo.getKid();
-//                String queueName = queueInfo.getName();
-//                int amount = clusterInfo.getQueueAmountMap().getOrDefault(queueName, 0);
-//                if (amount == 0) {
-//                    /**
-//                     *   todo 如果等于 0，说明当前队列是原始数据，需要进行备份同步，
-//                     */
-//                    boolean flag = SynchData(clusterInfo, curKid, queueName);
-//                    if (flag) {
-//                    }
-//                }
-//            }
-//        }
-//        AdminServerCache.ClusterInfo = clusterInfo;
-    }
-
-
-    @PostMapping("synch/queue/data")
-    public String sunchData(@RequestBody SynchInfo synchInfo) {
-        //todo  生成一个新的客户端，然后发送数据到另一台Server上
-        // 0 代表成功 1 代表失败
-
-        return "0";
-    }
-
-
-    private Boolean SynchData(ClusterInfo clusterInfo, String curKid, String queueName) {
-
-        List<String> kids = selectCopyToList(queueName,
-                AdminServerCache.ClusterInfo.getDuplicate() - 1, clusterInfo);
-        List<Future> ansList = new ArrayList<>();
-
-        for (int i = 0; i < AdminServerCache.ClusterInfo.getDuplicate(); i++) {
-            Future<Object[]> submit = LocalExecutor.NormalUseExecutor
-                    .submit(new SynchDataRunnable(curKid, kids.get(i), queueName));
-            ansList.add(submit);
-        }
-
-        // 分析结果
-        for (Future future : ansList) {
-            try {
-                Boolean flag = (Boolean) future.get();
-                if (flag) {
-                    continue;
-                } else {
-                    // todo 删除目标队列的 queue, 然后检测目标的 server连接， 备份剩余的 server
-                    log.error("同步失败");
-
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (ExecutionException e) {
-                e.printStackTrace();
-            }
-        }
-
-        // 更新 cluster info
-        clusterInfo.getQueueAmountMap().put(queueName, kids.size() + 1);
-
-        return true;
-    }
-
-    /**
-     * 选取需要进行同步的 kid List
-     * 默认规则，选择最少队列原则
-     */
-    private List<String> selectCopyToList(String queueName, Integer amount, ClusterInfo clusterInfo) {
-        List<Map.Entry<String, Integer>> kids = new ArrayList<>();
-        for (Map.Entry<String, Integer> entry : clusterInfo.getQueueAmountMap().entrySet()) {
-            kids.add(entry);
-        }
-
-        // 进行升序排序
-        kids.sort(Comparator.comparingInt(Map.Entry::getValue));
-        List<String> ansList = new ArrayList<>();
-        for (int i = 0; i < amount; i++) {
-            ansList.add(kids.get(i).getKey());
-        }
-        return ansList;
     }
 }

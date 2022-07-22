@@ -4,7 +4,8 @@ import lombok.Data;
 
 @Data
 public class SynchInfo {
-    String fromServer;
-    String toServer;
+    String address;
+    Integer port;
     String queueName;
+    Integer type;
 }

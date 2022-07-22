@@ -18,7 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 public class UdpServerMsgProcessor {
 
     /**
-     * udp server 的作用用来数据备份传输，所以要加入应答机制
+     * udp server 的作用用来数据备份传输，所以要加入应答机制，避免出现消息丢失的情况
      */
     public static void msgCenter(ChannelHandlerContext ctx, DatagramPacket datagramPacket) {
         MQMessage.MQEntity entity = MsgResolver.parseUdpDatagramPacket(datagramPacket);
@@ -27,13 +27,35 @@ public class UdpServerMsgProcessor {
         if (null == BrokerLocalCache.udpChannel) {
             BrokerLocalCache.udpChannel = ctx.channel();
         }
-        // 开始根据消息类型处理消息
-        if (entity.getMsgType() == 3) {
-            handlerAckMsg(entity);
-        } else {
-            // 凡不是回复类型的消息，都需要进行ack确认
-            returnAckMsg(ctx, entity, datagramPacket);
+
+        // 开始根据消息类型处理消息 1. 生产者  2. 消费者  3. 回复类型消息
+        switch (entity.getMsgType()) {
+            case 1:
+                producer(ctx, entity, datagramPacket);
+                break;
+            case 2:
+                consumer(ctx, entity, datagramPacket);
+                break;
+            case 3:
+                // 用来处理回复类型的信息
+                handlerAckMsg(entity);
+                break;
+            default:
+                log.error("unknown msg type");
+                break;
         }
+    }
+
+
+    private static void consumer(ChannelHandlerContext ctx, MQMessage.MQEntity entity, DatagramPacket datagramPacket) {
+        MsgResolver.handleConsumerMsg(ctx, entity);
+        returnAckMsg(ctx, entity, datagramPacket);
+    }
+
+
+    private static void producer(ChannelHandlerContext ctx, MQMessage.MQEntity entity, DatagramPacket datagramPacket) {
+        MsgResolver.handlerProducerMsg(entity);
+        returnAckMsg(ctx, entity, datagramPacket);
     }
 
     /**

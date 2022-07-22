@@ -4,7 +4,10 @@ package com.krest.mq.admin.thread;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.krest.mq.admin.properties.MqConfig;
+import com.krest.mq.admin.util.ClusterUtil;
+import com.krest.mq.admin.util.SynchUtils;
 import com.krest.mq.core.cache.AdminServerCache;
+import com.krest.mq.core.entity.QueueInfo;
 import com.krest.mq.core.enums.ClusterRole;
 import com.krest.mq.core.entity.MqRequest;
 import com.krest.mq.core.entity.ServerInfo;
@@ -14,12 +17,14 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class SearchLeaderRunnable implements Runnable {
 
-    static final String registerPath = "/mq/server/register";
-    static final String selectLeaderPath = "/mq/server/select/leader";
+    String registerPath = "/mq/server/register";
+    String selectLeaderPath = "/mq/server/select/leader";
+
     MqConfig mqConfig;
 
 
@@ -40,6 +45,7 @@ public class SearchLeaderRunnable implements Runnable {
         }
 
         AdminServerCache.isSelectServer = false;
+
     }
 
 
@@ -47,10 +53,8 @@ public class SearchLeaderRunnable implements Runnable {
 
         // 遍历所有的信息
         for (int i = 0; i < this.mqConfig.getServerList().size(); i++) {
-
             ServerInfo curServerInfo = this.mqConfig.getServerList().get(i);
             AdminServerCache.kidServerMap.put(curServerInfo.getKid(), curServerInfo);
-
 
             // 如果当前的角色不是 观察模式 就退出
             if (!AdminServerCache.clusterRole.equals(ClusterRole.Observer)
@@ -130,7 +134,7 @@ public class SearchLeaderRunnable implements Runnable {
                 if (selectedServer == null) {
                     selectedServer = AdminServerCache.selfServerInfo;
                 }
-                
+
                 AdminServerCache.leaderInfo = selectedServer;
 
                 if (!selectedServer.getTargetAddress()

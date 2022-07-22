@@ -2,6 +2,7 @@ package com.krest.mq.core.server;
 
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.handler.MqUdpServerHandler;
+import com.krest.mq.core.utils.UdpMsgSendUtils;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -27,7 +28,6 @@ public class MQUDPServer {
     public MQUDPServer(Integer port) {
         this.port = port;
     }
-
 
 
     public void start() {
@@ -62,6 +62,11 @@ public class MQUDPServer {
             }
         }
     }
+
+    public void sendMsg(String address, Integer port, MQMessage.MQEntity mqEntity) {
+        UdpMsgSendUtils.sendAckMsg(this.channel, address, port, mqEntity);
+    }
+
 
     private void syncBrokerInfo() {
         // 发送广播信息

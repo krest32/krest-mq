@@ -21,7 +21,6 @@ public class UdpRespHandlerRunnable implements Runnable {
                 MQRespFuture respFuture = AdminServerCache.respFutureMap.remove(mqResp.getId());
                 // 将调用的结果放入到 Future 调用的结果当中
                 if (null != respFuture) {
-                    System.out.println(Thread.currentThread().getName() + " : 找到 Future : " + mqResp.getId());
                     respFuture.setResult();
                 }
             } catch (InterruptedException e) {

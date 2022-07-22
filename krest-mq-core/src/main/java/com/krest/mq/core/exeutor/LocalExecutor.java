@@ -15,4 +15,6 @@ public class LocalExecutor {
 
     public static ThreadPoolExecutor NormalUseExecutor = ExecutorFactory.threadPoolExecutor(new ThreadPoolConfig());
 
+    public static ThreadPoolExecutor AdminUseExecutor = ExecutorFactory.threadPoolExecutor(new ThreadPoolConfig());
+
 }

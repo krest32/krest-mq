@@ -2,6 +2,7 @@ package com.krest.mq.core.utils;
 
 
 import com.krest.mq.core.cache.AdminServerCache;
+import com.krest.mq.core.entity.DelayMessage;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.entity.MQRespFuture;
 import io.netty.buffer.Unpooled;
@@ -14,10 +15,9 @@ import java.net.InetSocketAddress;
 @Slf4j
 public class UdpMsgSendUtils {
 
+
     public static boolean sendAckMsg(Channel channel, String host, Integer port, MQMessage.MQEntity mqEntity) {
         int tryCnt = 0;
-
-        log.info("host : {} , port : {} ", host, port);
         while (tryCnt < 3) {
             InetSocketAddress socket = new InetSocketAddress(host, port);
             DatagramPacket responseData = new DatagramPacket(
@@ -28,7 +28,6 @@ public class UdpMsgSendUtils {
                 tryCnt++;
                 log.info("retry : {} ", tryCnt);
             }
-            System.out.println(mqEntity);
         }
         return false;
     }
