@@ -1,6 +1,8 @@
 package com.krest.mq.admin.schedule;
 
 
+import com.fasterxml.jackson.databind.deser.std.StringArrayDeserializer;
+import com.krest.mq.admin.balancer.BrokerBalancer;
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
 import com.krest.mq.admin.util.ClusterUtil;
@@ -10,6 +12,7 @@ import com.krest.mq.core.entity.ServerInfo;
 import com.krest.mq.core.exeutor.LocalExecutor;
 import com.krest.mq.core.utils.DateUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -29,9 +32,9 @@ public class ScheduleJob {
     @Scheduled(cron = "0/30 * * * * ?")
     public void detectFollower() {
 
-        if (!clusterUtil.isReady()) {
+        if (!clusterUtil.isReady())
             return;
-        }
+
 
         AdminServerCache.isDetectFollower = true;
 
@@ -66,9 +69,9 @@ public class ScheduleJob {
     @Scheduled(cron = "0/30 * * * * ?")
     public void detectLeader() {
 
-        if (!clusterUtil.isReady()) {
+        if (!clusterUtil.isReady())
             return;
-        }
+
         // 如果 leader 的信息为空，那么就开始寻找
         try {
             if (null == AdminServerCache.leaderInfo) {
@@ -87,8 +90,14 @@ public class ScheduleJob {
                             AdminServerCache.leaderInfo.getTargetAddress(), AdminServerCache.leaderInfo);
                     if (flag) {
                         log.info("反向检测 leader 成功, 重置 follower 反向探测超时时间, 并重新注册自己");
-                        clusterUtil.registerSelf();
-                        AdminServerCache.resetExpireTime();
+                        String ans = clusterUtil.registerSelf();
+                        if (StringUtils.isBlank(ans)) {
+                            log.info("可能存在多个 leader, 开始重新选举");
+                            clusterUtil.initData();
+                            LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(mqConfig));
+                        } else {
+                            AdminServerCache.resetExpireTime();
+                        }
                     } else {
                         log.info("反向检测 leader 失败, 开始重新选举 leader ");
                         // 重新设置角色类型，并发起选举
@@ -99,6 +108,13 @@ public class ScheduleJob {
             }
         } catch (Exception e) {
             log.error(e.getMessage(), e);
+        }
+    }
+
+    @Scheduled(cron = "0/30 * * * * ?")
+    public void reBalanceQueue() {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+            BrokerBalancer.run();
         }
     }
 }

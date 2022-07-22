@@ -19,6 +19,7 @@
         <module>krest-file</module>
         <module>krest-mq-admin</module>
         <module>krest-mq-admin2</module>
+        <module>krest-mq-admin3</module>
     </modules>
 
     <parent>

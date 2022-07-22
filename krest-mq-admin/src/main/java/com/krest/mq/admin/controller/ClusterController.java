@@ -4,7 +4,7 @@ package com.krest.mq.admin.controller;
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
 import com.krest.mq.admin.util.ClusterUtil;
-import com.krest.mq.admin.util.SynchUtils;
+import com.krest.mq.admin.util.SyncDataUtils;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.entity.ClusterInfo;
 import com.krest.mq.core.enums.ClusterRole;
@@ -58,7 +58,7 @@ public class ClusterController {
             AdminServerCache.curServers.add(serverInfo);
 
             // 同步集群的 queue 信息
-            SynchUtils.collectQueueInfo();
+            SyncDataUtils.collectQueueInfo();
             return AdminServerCache.leaderInfo;
         }
         // 返回一个空对象

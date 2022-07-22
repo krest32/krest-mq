@@ -17,12 +17,12 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-public class SynchUtils {
+public class SyncDataUtils {
 
     public static MqConfig mqConfig;
     static String getQueueInfoPath = "/mq/manager/get/queue/info";
-    static String synchClusterInfoPath = "/mq/manager/synch/cluster/info";
-    static String synchQueueDataPath = "/mq/manager/synch/queue/data";
+    static String synchClusterInfoPath = "/mq/manager/sync/cluster/info";
+    static String synchQueueDataPath = "/mq/manager/sync/queue/data";
     static String clearBrokerDataPath = "/mq/manager/clear/overdue/data";
 
     public static void collectQueueInfo() {

@@ -17,7 +17,7 @@ import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class MQTCPClient implements MQClient {
+public class MQTCPClient{
 
     private String host;
     private int port;
@@ -68,7 +68,6 @@ public class MQTCPClient implements MQClient {
         }
     }
 
-    @Override
     public void connect(ChannelInboundHandlerAdapter handlerAdapter) {
         bootstrap = new Bootstrap();
         try {
@@ -111,10 +110,8 @@ public class MQTCPClient implements MQClient {
     }
 
 
-    @Override
     public void connectAndSend(ChannelInboundHandlerAdapter handlerAdapter, MQMessage.MQEntity mqEntity) {
         connect(handlerAdapter);
-
         sendMsg(mqEntity);
 
     }

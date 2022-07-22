@@ -1,13 +1,9 @@
 package com.krest.mq.admin.thread;
 
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.krest.mq.admin.properties.MqConfig;
-import com.krest.mq.admin.util.ClusterUtil;
-import com.krest.mq.admin.util.SynchUtils;
 import com.krest.mq.core.cache.AdminServerCache;
-import com.krest.mq.core.entity.QueueInfo;
 import com.krest.mq.core.enums.ClusterRole;
 import com.krest.mq.core.entity.MqRequest;
 import com.krest.mq.core.entity.ServerInfo;
@@ -17,7 +13,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class SearchLeaderRunnable implements Runnable {

@@ -77,7 +77,7 @@ public class ManagerController {
     /**
      * 采用 udp 的方式进行传输数据
      */
-    @PostMapping("synch/queue/data")
+    @PostMapping("sync/queue/data")
     public String sunchData(@RequestBody String synchInfoJson) {
         //todo  生成一个新的客户端，然后发送数据到另一台Server上
         SynchInfo synchInfo = JSONObject.parseObject(synchInfoJson, SynchInfo.class);
@@ -108,13 +108,23 @@ public class ManagerController {
     }
 
 
+    /**
+     * 采用 udp 的方式进行传输数据
+     */
+    @PostMapping("sync/all/queue")
+    public String syncAllData(@RequestBody String toKid) {
+        log.info("收到同步队列的指令");
+        return "0";
+    }
+
+
     @GetMapping("get/queue/info/{queueName}")
     public Integer getQueue(@PathVariable String queueName) {
         return BrokerLocalCache.queueMap.get(queueName).size();
     }
 
 
-    @PostMapping("synch/cluster/info")
+    @PostMapping("sync/cluster/info")
     public void synchClusterInfo(@RequestBody String requestStr) {
 
         // 同步 cluster 信息

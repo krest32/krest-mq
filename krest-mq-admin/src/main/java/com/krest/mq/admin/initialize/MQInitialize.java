@@ -4,7 +4,7 @@ import com.krest.file.entity.KrestFileConfig;
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
 import com.krest.mq.admin.thread.TCPServerRunnable;
-import com.krest.mq.admin.util.SynchUtils;
+import com.krest.mq.admin.util.SyncDataUtils;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.CacheFileConfig;
 import com.krest.mq.core.entity.ServerInfo;
@@ -29,7 +29,7 @@ public class MQInitialize implements InitializingBean {
         CacheFileConfig.queueCacheDatePath = config.getCacheFolder();
         AdminServerCache.kid = config.getKid();
         AdminServerCache.clusterInfo.setDuplicate(config.getDuplicate());
-        SynchUtils.mqConfig = config;
+        SyncDataUtils.mqConfig = config;
 
 
         // MQ server 缓存文件配置
@@ -59,7 +59,7 @@ public class MQInitialize implements InitializingBean {
         LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(config));
 
         // 然后开始收集每个服务的 queue 信息
-        SynchUtils.collectQueueInfo();
+        SyncDataUtils.collectQueueInfo();
 
     }
 }

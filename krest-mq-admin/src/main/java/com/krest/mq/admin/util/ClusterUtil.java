@@ -25,6 +25,8 @@ public class ClusterUtil {
         MqRequest request = new MqRequest(
                 "http://" + leaderAddress + detectLeaderPath, serverInfo);
         String response = HttpUtil.postRequest(request);
+        if (StringUtils.isBlank(response))
+            return false;
         return !"error".equals(response);
     }
 
@@ -35,10 +37,10 @@ public class ClusterUtil {
         return !"error".equals(response);
     }
 
-    public void registerSelf() {
+    public String registerSelf() {
         String targetUtl = "http://" + AdminServerCache.leaderInfo.getTargetAddress() + registerPath;
         MqRequest request = new MqRequest(targetUtl, AdminServerCache.selfServerInfo);
-        HttpUtil.postRequest(request);
+        return HttpUtil.postRequest(request);
     }
 
 

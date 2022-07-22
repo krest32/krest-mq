@@ -4,7 +4,7 @@ server:
 
 spring:
   application:
-    name: mqServer
+    name: mqServer1
   profiles:
     active: dev
 
@@ -20,7 +20,7 @@ krest:
       - {kid: 2, tcpPort: 10002, udpPort: 10002, address: localhost, port: 9002}
       - {kid: 3, tcpPort: 10003, udpPort: 10003, address: localhost, port: 9003}
     # 每个queue的最小副本数量，不能大于cluster的最大 server 数量
-    duplicate: 2
+    duplicate: 3
     # 持久化文件存放的目录
     cacheFolder: E:\\Data\\krest-mq\\queue-data\\
     # 单个缓存文件的大小，单位字节 4048 也就是 4 * 1024, 4 KB 10 mb 10485760
