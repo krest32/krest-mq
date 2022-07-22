@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class BrokerBalancer {
 
     public static void run() {
-        log.info("start queue balance....");
+
         AdminServerCache.isKidBalanced = false;
 
         Integer duplicate = AdminServerCache.clusterInfo.getDuplicate();
@@ -29,26 +29,18 @@ public class BrokerBalancer {
         ClusterInfo clusterInfo = AdminServerCache.clusterInfo;
         Map<String, Integer> kidQueueAmountMap = new HashMap<>();
 
-        ConcurrentHashMap<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = clusterInfo.getKidQueueInfo();
-        Iterator<Map.Entry<String, ConcurrentHashMap<String, QueueInfo>>> kidQueueIterator = kidQueueInfo.entrySet().iterator();
-        while (kidQueueIterator.hasNext()) {
-            Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> mapEntry = kidQueueIterator.next();
-            Iterator<Map.Entry<String, QueueInfo>> queueInfoIterator = mapEntry.getValue().entrySet().iterator();
-            int count = 0;
-            while (queueInfoIterator.hasNext()) {
-                Map.Entry<String, QueueInfo> infoEntry = queueInfoIterator.next();
-                QueueInfo queueInfo = infoEntry.getValue();
-                String queueName = queueInfo.getName();
-                Integer amount = clusterInfo.getQueueAmountMap().getOrDefault(queueName, 0);
-                clusterInfo.getQueueAmountMap().put(queueName, amount + 1);
-                count++;
-            }
-            kidQueueAmountMap.put(mapEntry.getKey(), count);
-        }
+        countKidAndQueue(clusterInfo, kidQueueAmountMap);
 
+        // 开始同步数据
+        doSyncData(duplicate, clusterInfo, kidQueueAmountMap);
+
+        AdminServerCache.isKidBalanced = true;
+    }
+
+    private static void doSyncData(Integer duplicate, ClusterInfo clusterInfo, Map<String, Integer> kidQueueAmountMap) {
         // 进行升序排序： 注意：要有排序的描述条件，否则无法排序
         PriorityQueue<Map.Entry<String, Integer>> sortedQueue = new PriorityQueue<>(
-                (o1, o2) -> o1.getValue() - o2.getValue());
+                Comparator.comparingInt(Map.Entry::getValue));
 
         Iterator<Map.Entry<String, Integer>> iterator = kidQueueAmountMap.entrySet().iterator();
         while (iterator.hasNext()) {
@@ -56,7 +48,8 @@ public class BrokerBalancer {
         }
 
         // 开始遍历记录的 queue 数量的列表
-        Iterator<Map.Entry<String, Integer>> queueAmountIt = clusterInfo.getQueueAmountMap().entrySet().iterator();
+        Iterator<Map.Entry<String, Integer>> queueAmountIt =
+                clusterInfo.getQueueAmountMap().entrySet().iterator();
 
         while (queueAmountIt.hasNext()) {
             Map.Entry<String, Integer> entry = queueAmountIt.next();
@@ -84,10 +77,26 @@ public class BrokerBalancer {
                 sortedQueue.add(poll);
             }
         }
+    }
 
-        AdminServerCache.isKidBalanced = true;
-        log.info("end queue balance ");
 
+    private static void countKidAndQueue(ClusterInfo clusterInfo, Map<String, Integer> kidQueueAmountMap) {
+        ConcurrentHashMap<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = clusterInfo.getKidQueueInfo();
+        Iterator<Map.Entry<String, ConcurrentHashMap<String, QueueInfo>>> kidQueueIterator = kidQueueInfo.entrySet().iterator();
+        while (kidQueueIterator.hasNext()) {
+            Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> mapEntry = kidQueueIterator.next();
+            Iterator<Map.Entry<String, QueueInfo>> queueInfoIterator = mapEntry.getValue().entrySet().iterator();
+            int count = 0;
+            while (queueInfoIterator.hasNext()) {
+                Map.Entry<String, QueueInfo> infoEntry = queueInfoIterator.next();
+                QueueInfo queueInfo = infoEntry.getValue();
+                String queueName = queueInfo.getName();
+                Integer amount = clusterInfo.getQueueAmountMap().getOrDefault(queueName, 0);
+                clusterInfo.getQueueAmountMap().put(queueName, amount + 1);
+                count++;
+            }
+            kidQueueAmountMap.put(mapEntry.getKey(), count);
+        }
     }
 
     private static void updateEntryInfo(String fromKid, String toKid,

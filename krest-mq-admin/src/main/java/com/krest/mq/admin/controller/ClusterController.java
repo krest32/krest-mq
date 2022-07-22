@@ -46,9 +46,6 @@ public class ClusterController {
 
     /**
      * todo 逻辑存在漏洞，待修改
-     * @param serverInfo
-     * @return
-     * @throws InterruptedException
      */
     @PostMapping("register")
     public ServerInfo register(@RequestBody ServerInfo serverInfo) throws InterruptedException {
@@ -65,6 +62,9 @@ public class ClusterController {
         return null;
     }
 
+    /**
+     *
+     */
     @PostMapping("check/leader")
     public String checkLeader(@RequestBody ServerInfo serverInfo) {
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
@@ -116,8 +116,8 @@ public class ClusterController {
     /**
      * 同步 cluster info 信息
      */
-    @PostMapping("synch/cluster-info")
-    public void synchClusterInfo(@RequestBody ClusterInfo clusterInfo) {
+    @PostMapping("sync/cluster-info")
+    public void syncClusterInfo(@RequestBody ClusterInfo clusterInfo) {
         AdminServerCache.clusterInfo = clusterInfo;
     }
 }

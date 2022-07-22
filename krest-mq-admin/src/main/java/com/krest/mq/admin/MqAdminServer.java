@@ -12,7 +12,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableConfigurationProperties(MqConfig.class)
 @EnableScheduling
-@EnableAsync/*异步执行定时任务*/
+@EnableAsync
 public class MqAdminServer {
     public static void main(String[] args) {
         SpringApplication.run(MqAdminServer.class, args);

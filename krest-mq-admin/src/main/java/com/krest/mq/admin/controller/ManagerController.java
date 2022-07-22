@@ -9,6 +9,7 @@ import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.entity.*;
 import com.krest.mq.core.enums.ClusterRole;
+import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.HttpUtil;
 import com.krest.mq.core.utils.SyncUtil;
@@ -34,8 +35,7 @@ public class ManagerController {
 
     @PostMapping("get/leader/info")
     public ServerInfo getLeaderInfo() {
-        if (!AdminServerCache.clusterRole.equals(ClusterRole.Observer)
-                || !AdminServerCache.isSelectServer) {
+        if (!AdminServerCache.clusterRole.equals(ClusterRole.Observer) || !AdminServerCache.isSelectServer) {
             return AdminServerCache.leaderInfo;
         }
         return null;
@@ -78,10 +78,9 @@ public class ManagerController {
      * 采用 udp 的方式进行传输数据
      */
     @PostMapping("sync/queue/data")
-    public String sunchData(@RequestBody String synchInfoJson) {
-        //todo  生成一个新的客户端，然后发送数据到另一台Server上
+    public String syncData(@RequestBody String synchInfoJson) {
         SynchInfo synchInfo = JSONObject.parseObject(synchInfoJson, SynchInfo.class);
-        // 新建队列
+        // 先新建要同步的队列信息
         MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
                 .setId(UUID.randomUUID().toString())
                 .setDateTime(DateUtils.getNowDate())
@@ -93,17 +92,20 @@ public class ManagerController {
 
         // 开始同步数据
         if (!synchInfo.getType().equals(3)) {
+            // 取出普通队列
             BlockingDeque<MQMessage.MQEntity> blockingDeque = BrokerLocalCache.queueMap.get(synchInfo.getQueueName());
             while (!blockingDeque.isEmpty()) {
                 AdminServerCache.mqudpServer.sendMsg(synchInfo.getAddress(), synchInfo.getPort(), blockingDeque.poll());
             }
         } else {
-            // todo 延时队列等待开发
+            // 取出延时队列的信息
             DelayQueue<DelayMessage> delayMessages = BrokerLocalCache.delayQueueMap.get(synchInfo.getQueueName());
-
+            while (!delayMessages.isEmpty()) {
+                AdminServerCache.mqudpServer.sendMsg(synchInfo.getAddress(), synchInfo.getPort(),
+                        delayMessages.poll().getMqEntity());
+            }
         }
 
-        // 0 代表成功 1 代表失败
         return "0";
     }
 
@@ -113,7 +115,70 @@ public class ManagerController {
      */
     @PostMapping("sync/all/queue")
     public String syncAllData(@RequestBody String toKid) {
-        log.info("收到同步队列的指令");
+        log.info("receive sync all queue command, to kid : {} ", toKid);
+        toKid = JSONObject.parseObject(toKid, String.class);
+        ServerInfo serverInfo = null;
+        for (ServerInfo temp : mqConfig.getServerList()) {
+            if (temp.getKid().equals(toKid)) {
+                serverInfo = temp;
+                break;
+            }
+        }
+
+        System.out.println(serverInfo);
+        String targetHost = serverInfo.getAddress();
+        Integer port = serverInfo.getUdpPort();
+
+        // 找到需要同步的队列信息
+        ConcurrentHashMap<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = AdminServerCache.clusterInfo.getKidQueueInfo();
+        ConcurrentHashMap<String, QueueInfo> toKidQueueInfo = kidQueueInfo.get(toKid);
+        ConcurrentHashMap<String, QueueInfo> fromQueueInfo = kidQueueInfo.get(AdminServerCache.kid);
+        Iterator<Map.Entry<String, QueueInfo>> iterator = fromQueueInfo.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, QueueInfo> infoEntry = iterator.next();
+            QueueInfo queueInfo = infoEntry.getValue();
+            // 同步对方没有的队列内容
+            if (!toKidQueueInfo.containsKey(queueInfo.getName())) {
+                log.info("start sync [ {} ] msg ", queueInfo.getName());
+
+                Integer type = 0;
+                switch (queueInfo.getType()) {
+                    case PERMANENT:
+                        type = 1;
+                        break;
+                    case TEMPORARY:
+                        type = 2;
+                        break;
+                    case DELAY:
+                        type = 3;
+                        break;
+                }
+
+                MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
+                        .setId(UUID.randomUUID().toString())
+                        .setDateTime(DateUtils.getNowDate())
+                        .setMsgType(2)
+                        .setIsAck(true)
+                        .putQueueInfo(queueInfo.getName(), type)
+                        .build();
+                AdminServerCache.mqudpServer.sendMsg(targetHost, port, mqEntity);
+
+                // 开始同步信息
+                if (queueInfo.getType().equals(QueueType.DELAY)) {
+                    // 取出延时队列的信息
+                    DelayQueue<DelayMessage> delayMessages = BrokerLocalCache.delayQueueMap.get(queueInfo.getName());
+                    while (!delayMessages.isEmpty()) {
+                        AdminServerCache.mqudpServer.sendMsg(targetHost, port,
+                                delayMessages.poll().getMqEntity());
+                    }
+                } else {
+                    BlockingDeque<MQMessage.MQEntity> blockingDeque = BrokerLocalCache.queueMap.get(queueInfo.getName());
+                    while (!blockingDeque.isEmpty()) {
+                        AdminServerCache.mqudpServer.sendMsg(targetHost, port, blockingDeque.poll());
+                    }
+                }
+            }
+        }
         return "0";
     }
 
@@ -125,7 +190,7 @@ public class ManagerController {
 
 
     @PostMapping("sync/cluster/info")
-    public void synchClusterInfo(@RequestBody String requestStr) {
+    public void syncClusterInfo(@RequestBody String requestStr) {
 
         // 同步 cluster 信息
         AdminServerCache.clusterInfo = JSONObject.parseObject(requestStr, ClusterInfo.class);

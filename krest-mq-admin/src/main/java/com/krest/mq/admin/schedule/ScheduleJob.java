@@ -1,7 +1,5 @@
 package com.krest.mq.admin.schedule;
 
-
-import com.fasterxml.jackson.databind.deser.std.StringArrayDeserializer;
 import com.krest.mq.admin.balancer.BrokerBalancer;
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
@@ -84,8 +82,8 @@ public class ScheduleJob {
                     AdminServerCache.resetExpireTime();
                 }
                 if (curMillions > AdminServerCache.expireTime) {
-                    log.info("过长时间, leader 沒有发送探测报文, follower 发起反向探测");
-                    log.info("开始检测 leader 信息 : " + AdminServerCache.leaderInfo);
+                    log.info("沒有s收到探测报文, follower 反向探测 leader 信息, Leader : " + AdminServerCache.leaderInfo);
+
                     boolean flag = clusterUtil.detectLeader(
                             AdminServerCache.leaderInfo.getTargetAddress(), AdminServerCache.leaderInfo);
                     if (flag) {
@@ -99,8 +97,8 @@ public class ScheduleJob {
                             AdminServerCache.resetExpireTime();
                         }
                     } else {
-                        log.info("反向检测 leader 失败, 开始重新选举 leader ");
                         // 重新设置角色类型，并发起选举
+                        log.info("反向检测 leader 失败, 开始重新选举 leader ");
                         clusterUtil.initData();
                         LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(mqConfig));
                     }
