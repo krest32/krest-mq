@@ -4,6 +4,7 @@ import com.krest.mq.admin.balancer.BrokerBalancer;
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
 import com.krest.mq.admin.util.ClusterUtil;
+import com.krest.mq.admin.util.SyncDataUtils;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.enums.ClusterRole;
 import com.krest.mq.core.entity.ServerInfo;
@@ -22,17 +23,13 @@ import java.util.Iterator;
 public class ScheduleJob {
 
     @Autowired
-    MqConfig mqConfig;
-
-    @Autowired
     ClusterUtil clusterUtil;
 
     @Scheduled(cron = "0/30 * * * * ?")
     public void detectFollower() {
 
-        if (!clusterUtil.isReady())
+        if (!SyncDataUtils.isClusterReady())
             return;
-
 
         AdminServerCache.isDetectFollower = true;
 
@@ -67,13 +64,13 @@ public class ScheduleJob {
     @Scheduled(cron = "0/30 * * * * ?")
     public void detectLeader() {
 
-        if (!clusterUtil.isReady())
+        if (!SyncDataUtils.isClusterReady())
             return;
 
         // 如果 leader 的信息为空，那么就开始寻找
         try {
             if (null == AdminServerCache.leaderInfo) {
-                LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(mqConfig));
+                LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(SyncDataUtils.mqConfig));
             }
 
             if (!AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
@@ -82,8 +79,7 @@ public class ScheduleJob {
                     AdminServerCache.resetExpireTime();
                 }
                 if (curMillions > AdminServerCache.expireTime) {
-                    log.info("沒有s收到探测报文, follower 反向探测 leader 信息, Leader : " + AdminServerCache.leaderInfo);
-
+                    log.info("沒有收到探测报文, follower 反向探测 leader 信息, Leader : " + AdminServerCache.leaderInfo);
                     boolean flag = clusterUtil.detectLeader(
                             AdminServerCache.leaderInfo.getTargetAddress(), AdminServerCache.leaderInfo);
                     if (flag) {
@@ -92,15 +88,16 @@ public class ScheduleJob {
                         if (StringUtils.isBlank(ans)) {
                             log.info("可能存在多个 leader, 开始重新选举");
                             clusterUtil.initData();
-                            LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(mqConfig));
+                            LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(SyncDataUtils.mqConfig));
                         } else {
                             AdminServerCache.resetExpireTime();
                         }
                     } else {
                         // 重新设置角色类型，并发起选举
                         log.info("反向检测 leader 失败, 开始重新选举 leader ");
+
                         clusterUtil.initData();
-                        LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(mqConfig));
+                        LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(SyncDataUtils.mqConfig));
                     }
                 }
             }
@@ -109,9 +106,17 @@ public class ScheduleJob {
         }
     }
 
+    /**
+     * 被动同步数据的定时任务
+     */
     @Scheduled(cron = "0/30 * * * * ?")
     public void reBalanceQueue() {
+        // 只有整个集群 ok 的情况下， 才会进行数据同步任务
+        if (!SyncDataUtils.isClusterReady())
+            return;
+
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+            SyncDataUtils.syncClusterInfo();
             BrokerBalancer.run();
         }
     }

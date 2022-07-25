@@ -8,4 +8,5 @@ public class SynchInfo {
     Integer port;
     String queueName;
     Integer type;
+    String offset;
 }

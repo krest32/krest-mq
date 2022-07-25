@@ -59,7 +59,9 @@ public class ConnectUtil {
         // 有 Leader 分配 kid（对应的Netty服务器）
         registerMsg = registerMsg();
         nettyInfo = ConnectUtil.getNettyServerInfo(mqLeader, registerMsg);
+
         while (nettyInfo == null) {
+            System.out.println(nettyInfo);
             log.info("等待 3s,  重试获取 netty server 的信息");
             try {
                 Thread.sleep(3 * 1000);
@@ -75,7 +77,9 @@ public class ConnectUtil {
     public static ServerInfo getNettyServerInfo(ServerInfo leader, MQMessage.MQEntity mqEntity) {
         String targetUrl = "http://" + leader.getTargetAddress() + "/mq/manager/get/netty/server/info";
         String responseStr = null;
+
         try {
+            System.out.println(JsonFormat.printer().print(mqEntity));
             responseStr = HttpUtil.postRequest(targetUrl, JsonFormat.printer().print(mqEntity));
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
@@ -98,8 +102,7 @@ public class ConnectUtil {
         String targetUrl = "http://" + serverInfo.getTargetAddress() + "/mq/manager/get/leader/info";
         MqRequest request = new MqRequest(targetUrl, null);
         String responseStr = HttpUtil.postRequest(request);
-
-        if (!StringUtils.isBlank(responseStr) || !"error".equals(responseStr)) {
+        if (!StringUtils.isBlank(responseStr) && !"error".equals(responseStr)) {
             return JSONObject.parseObject(responseStr, ServerInfo.class);
         }
         return null;

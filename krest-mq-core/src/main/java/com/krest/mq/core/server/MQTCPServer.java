@@ -7,6 +7,7 @@ import com.krest.file.handler.KrestFileHandler;
 import com.krest.mq.core.cache.CacheFileConfig;
 import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.config.MQNormalConfig;
+import com.krest.mq.core.entity.DelayMessage;
 import com.krest.mq.core.entity.QueueInfo;
 import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.core.entity.MQMessage;
@@ -97,51 +98,90 @@ public class MQTCPServer {
 
         // 还原队列信息
         recoverQueueData();
-
+        log.info("queue info map :{} ", BrokerLocalCache.queueInfoMap);
         log.info("初始化数据完成");
-
     }
 
 
     private void recoverQueueData() {
-        BrokerLocalCache.queueMap.put(MQNormalConfig.defaultAckQueue, new LinkedBlockingDeque<>(100));
+        // 新建一个默认的 ack queue
+        BrokerLocalCache.queueMap.put(MQNormalConfig.defaultAckQueue, new LinkedBlockingDeque<>());
         Iterator<Map.Entry<String, QueueInfo>> iterator = BrokerLocalCache.queueInfoMap.entrySet().iterator();
-        log.info("queue info : " + BrokerLocalCache.queueInfoMap);
         while (iterator.hasNext()) {
             Map.Entry<String, QueueInfo> entry = iterator.next();
             String queueName = entry.getKey();
             QueueInfo queueInfo = entry.getValue();
             try {
-                if (!queueInfo.getType().equals(QueueType.TEMPORARY)) {
-                    // 开始构建队列
-                    BlockingDeque<MQMessage.MQEntity> curBlockQueue = new LinkedBlockingDeque<>();
-                    if (StringUtils.isBlank(queueInfo.getOffset())) {
-                        continue;
-                    }
-
-                    List<String> queueJsonData = KrestFileHandler.readData(
-                            CacheFileConfig.queueCacheDatePath + queueName, queueInfo.getOffset());
-
-                    // 开始清洗数据
-                    for (String jsonData : queueJsonData) {
-                        MQMessage.MQEntity.Builder tempBuilder = MQMessage.MQEntity.newBuilder();
-                        JsonFormat.parser().merge((String) JSONObject.parse(jsonData),
-                                tempBuilder);
-                        MQMessage.MQEntity mqEntity = tempBuilder.build();
-                        if (Long.valueOf(queueInfo.getOffset())
-                                .compareTo(Long.valueOf(mqEntity.getId())) < 0) {
-                            curBlockQueue.offer(mqEntity);
-                        }
-                    }
-
-                    log.info(queueName + " : " + curBlockQueue.size());
-                    BrokerLocalCache.queueMap.put(queueName, curBlockQueue);
+                // 如果是普通持久化队列
+                if (queueInfo.getType().equals(QueueType.PERMANENT)) {
+                    recoverNormalQueue(queueName, queueInfo);
+                    // 回复延时队列数据
+                } else if (queueInfo.getType().equals(QueueType.DELAY)) {
+                    recoverDelayQueue(queueName, queueInfo);
+                } else {
+                    log.error("临时队列：{}", queueName);
                 }
+
             } catch (InvalidProtocolBufferException e) {
                 log.error(e.getMessage(), e);
             }
         }
+
     }
+
+    private void recoverNormalQueue(String queueName, QueueInfo queueInfo) throws InvalidProtocolBufferException {
+        BlockingDeque<MQMessage.MQEntity> curBlockQueue = new LinkedBlockingDeque<>();
+        if (StringUtils.isBlank(queueInfo.getOffset())) {
+            return;
+        }
+        List<String> queueJsonData = KrestFileHandler.readData(
+                CacheFileConfig.queueCacheDatePath + queueName, queueInfo.getOffset());
+
+        // 开始清洗数据
+        for (String jsonData : queueJsonData) {
+            MQMessage.MQEntity.Builder tempBuilder = MQMessage.MQEntity.newBuilder();
+            JsonFormat.parser().merge((String) JSONObject.parse(jsonData),
+                    tempBuilder);
+            MQMessage.MQEntity mqEntity = tempBuilder.build();
+            if (Long.valueOf(queueInfo.getOffset())
+                    .compareTo(Long.valueOf(mqEntity.getId())) <= 0) {
+                curBlockQueue.offer(mqEntity);
+            }
+        }
+        log.info("普通持久化队列 -> " + queueName + " : " + curBlockQueue.size());
+        BrokerLocalCache.queueInfoMap.get(queueName).setAmount(curBlockQueue.size());
+        BrokerLocalCache.queueMap.put(queueName, curBlockQueue);
+    }
+
+
+    private void recoverDelayQueue(String queueName, QueueInfo queueInfo) throws InvalidProtocolBufferException {
+        // 开始构建队列
+        DelayQueue<DelayMessage> curBlockQueue = new DelayQueue<>();
+
+        if (StringUtils.isBlank(queueInfo.getOffset())) {
+            return;
+        }
+
+        List<String> queueJsonData = KrestFileHandler.readData(
+                CacheFileConfig.queueCacheDatePath + queueName, queueInfo.getOffset());
+
+        // 开始清洗数据
+        for (String jsonData : queueJsonData) {
+            MQMessage.MQEntity.Builder tempBuilder = MQMessage.MQEntity.newBuilder();
+            JsonFormat.parser().merge((String) JSONObject.parse(jsonData),
+                    tempBuilder);
+            MQMessage.MQEntity mqEntity = tempBuilder.build();
+            if (Long.valueOf(queueInfo.getOffset())
+                    .compareTo(Long.valueOf(mqEntity.getId())) <= 0) {
+                DelayMessage delayMessage = new DelayMessage(mqEntity.getTimeout(), mqEntity);
+                curBlockQueue.offer(delayMessage);
+            }
+        }
+        log.info("延时队列 -> " + queueName + " : " + curBlockQueue.size());
+        BrokerLocalCache.queueInfoMap.get(queueName).setAmount(curBlockQueue.size());
+        BrokerLocalCache.delayQueueMap.put(queueName, curBlockQueue);
+    }
+
 
     public void stop() {
         if (null != bossGroup) {

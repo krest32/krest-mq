@@ -13,5 +13,5 @@ krest:
     workerId: 1
     datacenterId: 3
     server:
-      - localhost:9001
+#      - localhost:9001
       - localhost:9002

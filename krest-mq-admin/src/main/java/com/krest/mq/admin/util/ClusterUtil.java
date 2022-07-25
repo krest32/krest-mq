@@ -44,6 +44,9 @@ public class ClusterUtil {
     }
 
 
+    /**
+     * 清空当前的服务缓存的数据信息
+     */
     public void initData() {
         AdminServerCache.leaderInfo = null;
         AdminServerCache.clusterRole = ClusterRole.Observer;
@@ -51,15 +54,4 @@ public class ClusterUtil {
         AdminServerCache.kidServerMap.clear();
     }
 
-    public boolean isReady() {
-        if (AdminServerCache.isSelectServer) {
-            log.info("still in select server....");
-            return false;
-        }
-        if (AdminServerCache.isDetectFollower) {
-            log.info("still in detect follower....");
-            return false;
-        }
-        return true;
-    }
 }

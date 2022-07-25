@@ -25,4 +25,7 @@ public class QueueInfo implements Serializable {
 
     // 记录当前 queue 的偏移量， 也就是 msg 的 id
     String offset;
+
+    // 记录当前 queue 的数据量
+    Integer amount = 0;
 }

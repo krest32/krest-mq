@@ -15,9 +15,11 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.concurrent.*;
 
-public class BrokerLocalCache implements Serializable {
+public class BrokerLocalCache implements Serializable, Cloneable {
 
     private static final long serialVersionUID = 1;
+
+    public static BlockingDeque<MQMessage.MQEntity> testQueue = new LinkedBlockingDeque<>();
 
     public static ChannelGroup clientChannels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
     // 已经存在的 queued 的信息的集合

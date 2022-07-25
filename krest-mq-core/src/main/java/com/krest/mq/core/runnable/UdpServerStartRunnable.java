@@ -20,6 +20,5 @@ public class UdpServerStartRunnable implements Runnable {
         MQUDPServer mqudpServer = new MQUDPServer(this.port);
         AdminServerCache.mqudpServer = mqudpServer;
         AdminServerCache.mqudpServer.start();
-
     }
 }

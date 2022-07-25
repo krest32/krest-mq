@@ -3,10 +3,11 @@ package com.krest.mq.admin.thread;
 
 import com.alibaba.fastjson.JSONObject;
 import com.krest.mq.admin.properties.MqConfig;
+import com.krest.mq.admin.util.SyncDataUtils;
 import com.krest.mq.core.cache.AdminServerCache;
-import com.krest.mq.core.enums.ClusterRole;
 import com.krest.mq.core.entity.MqRequest;
 import com.krest.mq.core.entity.ServerInfo;
+import com.krest.mq.core.enums.ClusterRole;
 import com.krest.mq.core.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -40,6 +41,8 @@ public class SearchLeaderRunnable implements Runnable {
         }
 
         AdminServerCache.isSelectServer = false;
+
+        SyncDataUtils.syncClusterInfo();
 
     }
 

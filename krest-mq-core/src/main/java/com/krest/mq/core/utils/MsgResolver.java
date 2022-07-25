@@ -9,9 +9,9 @@ import com.krest.mq.core.entity.QueueInfo;
 import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.core.exeutor.LocalExecutor;
 import com.krest.mq.core.runnable.SynchLocalDataRunnable;
-import com.krest.mq.core.runnable.TcpDelayMsgSendRunnable;
-import com.krest.mq.core.runnable.TcpPutMsgRunnable;
-import com.krest.mq.core.runnable.TcpSendMsgRunnable;
+import com.krest.mq.core.runnable.MsgDelaySendRunnable;
+import com.krest.mq.core.runnable.MsgPutRunnable;
+import com.krest.mq.core.runnable.MsgSendRunnable;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 
@@ -64,13 +65,13 @@ public class MsgResolver {
             for (String queueName : queueNames) {
                 // 判断内存中是否存在该队列
                 if (null == BrokerLocalCache.queueInfoMap.get(queueName)) {
-                    if (MQNormalConfig.defaultAckQueue.equals(queueName)) {
-                        continue;
-                    }
                     log.info("{}, msg queue does not exist!", queueName);
                 } else {
-                    // 将消息放入到队列当中，已经对于 队列不存在的情况作处理，此处不作任何处理
-                    LocalExecutor.TcpExecutor.execute(new TcpPutMsgRunnable(queueName, mqEntity));
+                    if (MQNormalConfig.defaultAckQueue.equals(queueName)) {
+                        continue;
+                    } else {
+                        LocalExecutor.TcpExecutor.execute(new MsgPutRunnable(queueName, mqEntity));
+                    }
                 }
             }
         }
@@ -91,9 +92,10 @@ public class MsgResolver {
             channels.add(ctx.channel());
             BrokerLocalCache.queueCtxListMap.put(queueName, channels);
             // 开始创建消息队列
-            BrokerLocalCache.queueInfoMap.put(queueName, getQueueInfo(queueName, val));
+            BrokerLocalCache.queueInfoMap.put(queueName, getQueueInfo(queueName, val, request.getId()));
             // 如果不存在队列 就进行创建queue, 并开启监听
             if (BrokerLocalCache.queueInfoMap.get(queueName).getType().equals(QueueType.DELAY)) {
+
                 if (BrokerLocalCache.queueMap.get(queueName) != null) {
                     log.error(queueName + ": 定义为延时队列，但是存在普通队列的 ");
                 }
@@ -102,13 +104,16 @@ public class MsgResolver {
                     log.info("new delay queue : {}", queueName);
                     BrokerLocalCache.delayQueueMap.put(queueName, new DelayQueue<>());
                 }
-                LocalExecutor.TcpDelayExecutor.execute(new TcpDelayMsgSendRunnable(queueName));
+                LocalExecutor.TcpDelayExecutor.execute(new MsgDelaySendRunnable(queueName));
             } else {
+
                 if (BrokerLocalCache.queueMap.get(queueName) == null) {
+                    // 新建普通队列
                     log.info("new normal queue : {}", queueName);
-                    BrokerLocalCache.queueMap.put(queueName, new LinkedBlockingDeque<>());
+                    BlockingDeque<MQMessage.MQEntity> blockingDeque = new LinkedBlockingDeque<>();
+                    BrokerLocalCache.queueMap.put(queueName, blockingDeque);
                 }
-                LocalExecutor.TcpExecutor.execute(new TcpSendMsgRunnable(queueName));
+                LocalExecutor.TcpExecutor.execute(new MsgSendRunnable(queueName));
             }
         }
 
@@ -118,9 +123,10 @@ public class MsgResolver {
     }
 
 
-    private static QueueInfo getQueueInfo(String queueName, int val) {
+    private static QueueInfo getQueueInfo(String queueName, int val, String offset) {
         QueueInfo queueInfo = new QueueInfo();
         queueInfo.setName(queueName);
+        queueInfo.setOffset(offset);
         switch (val) {
             case 1:
                 queueInfo.setType(QueueType.PERMANENT);

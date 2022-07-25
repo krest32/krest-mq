@@ -30,8 +30,15 @@ public class AdminServerCache {
     public static boolean isSelectServer = false;
     // 当前 server 是否正在探测 follower
     public static boolean isDetectFollower = false;
+    // 当前 server 是否正在与 其他节点同步数据
+    public static boolean isSyncData = false;
+    // 当前 server 是否正在负载均衡
+    public static boolean isKidBalanced = false;
     // 默认 server 的状态为 observer （观察者）
     public static ClusterRole clusterRole = ClusterRole.Observer;
+
+
+
     // 系统保存的，存活状态的 server， 如果有的 server 长时间未收到 leader 信息，会反向探测
     public static CopyOnWriteArraySet<ServerInfo> curServers = new CopyOnWriteArraySet<>();
     // 配置信息中的 kid 与 cluster server 的对应关系
@@ -40,7 +47,7 @@ public class AdminServerCache {
     // 记录的 Cluster 信息
     public static ClusterInfo clusterInfo = new ClusterInfo();
     public static MQUDPServer mqudpServer;
-    public static boolean isKidBalanced = true;
+
 
     // 重置反向探测的过期时间
     public static List<Map.Entry<String, ServerInfo>> getSelectServerList() {

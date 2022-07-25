@@ -16,29 +16,70 @@ import com.krest.mq.core.utils.SyncUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
 import java.util.*;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.DelayQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 
 @Slf4j
 @RestController
 @RequestMapping("mq/manager")
-public class ManagerController {
+public class ClusterManagerController {
 
     @Autowired
     MqConfig mqConfig;
 
-
+    /**
+     * 获取当前 server 的 leader 信息
+     */
     @PostMapping("get/leader/info")
     public ServerInfo getLeaderInfo() {
-        if (!AdminServerCache.clusterRole.equals(ClusterRole.Observer) || !AdminServerCache.isSelectServer) {
+        // 判断当前的 server 是否在非正常状态
+        if (!AdminServerCache.clusterRole.equals(ClusterRole.Observer)
+                && !AdminServerCache.isSelectServer) {
             return AdminServerCache.leaderInfo;
         }
         return null;
+    }
+
+
+    @PostMapping("sync/cluster/info")
+    public void syncClusterInfo(@RequestBody String requestStr) {
+        // 同步 cluster 信息
+        AdminServerCache.clusterInfo = JSONObject.parseObject(requestStr, ClusterInfo.class);
+
+        // 同步 offset 信息
+        List<String> queueNames = new ArrayList<>();
+        Iterator<Map.Entry<String, QueueInfo>> iterator = BrokerLocalCache.queueInfoMap.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, QueueInfo> next = iterator.next();
+            queueNames.add(next.getKey());
+        }
+
+        // 设置 offset
+        for (String queueName : queueNames) {
+
+            // 缓存到本地中
+            String offset = String.valueOf(
+                    AdminServerCache.clusterInfo
+                            .getQueueOffsetMap()
+                            .getOrDefault(queueName, -1l)
+            );
+            Integer amount = BrokerLocalCache.queueInfoMap.get(queueName).getAmount();
+
+            SyncUtil.saveQueueInfoMap(queueName, offset, amount);
+
+            AdminServerCache.clusterInfo.getKidQueueInfo()
+                    .get(AdminServerCache.kid).get(queueName)
+                    .setOffset(offset);
+        }
     }
 
     /**
@@ -63,26 +104,17 @@ public class ManagerController {
         return null;
     }
 
-    @GetMapping("get/queue/info")
-    public ConcurrentHashMap<String, QueueInfo> getQueueInfo() {
-        for (Map.Entry<String, QueueInfo> entry : BrokerLocalCache.queueInfoMap.entrySet()) {
-            if (StringUtils.isBlank(entry.getValue().getKid())) {
-                entry.getValue().setKid(AdminServerCache.kid);
-            }
-        }
-        return BrokerLocalCache.queueInfoMap;
-    }
-
 
     /**
+     * 同步当前 server 的某一个 queue 数据到另一台服务器，
      * 采用 udp 的方式进行传输数据
      */
     @PostMapping("sync/queue/data")
-    public String syncData(@RequestBody String synchInfoJson) {
-        SynchInfo synchInfo = JSONObject.parseObject(synchInfoJson, SynchInfo.class);
+    public String syncData(@RequestBody String syncInfoJson) {
+        SynchInfo synchInfo = JSONObject.parseObject(syncInfoJson, SynchInfo.class);
         // 先新建要同步的队列信息
         MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
-                .setId(UUID.randomUUID().toString())
+                .setId(synchInfo.getOffset())
                 .setDateTime(DateUtils.getNowDate())
                 .setMsgType(2)
                 .setIsAck(true)
@@ -93,14 +125,16 @@ public class ManagerController {
         // 开始同步数据
         if (!synchInfo.getType().equals(3)) {
             // 取出普通队列
-            BlockingDeque<MQMessage.MQEntity> blockingDeque = BrokerLocalCache.queueMap.get(synchInfo.getQueueName());
-            while (!blockingDeque.isEmpty()) {
+            BlockingDeque<MQMessage.MQEntity> blockingDeque = copyNormalQueue(synchInfo.getQueueName());
+            System.out.println(synchInfo);
+            System.out.println(blockingDeque.size());
+            while (null != blockingDeque && !blockingDeque.isEmpty()) {
                 AdminServerCache.mqudpServer.sendMsg(synchInfo.getAddress(), synchInfo.getPort(), blockingDeque.poll());
             }
         } else {
             // 取出延时队列的信息
-            DelayQueue<DelayMessage> delayMessages = BrokerLocalCache.delayQueueMap.get(synchInfo.getQueueName());
-            while (!delayMessages.isEmpty()) {
+            DelayQueue<DelayMessage> delayMessages = copyDelayQueue(synchInfo.getQueueName());
+            while (null != delayMessages && !delayMessages.isEmpty()) {
                 AdminServerCache.mqudpServer.sendMsg(synchInfo.getAddress(), synchInfo.getPort(),
                         delayMessages.poll().getMqEntity());
             }
@@ -109,12 +143,33 @@ public class ManagerController {
         return "0";
     }
 
+    private BlockingDeque<MQMessage.MQEntity> copyNormalQueue(String queueName) {
+        if (BrokerLocalCache.queueMap.get(queueName) != null) {
+            BlockingDeque<MQMessage.MQEntity> blockingDeque =
+                    new LinkedBlockingDeque<>(BrokerLocalCache.queueMap.get(queueName));
+            return blockingDeque;
+
+        }
+        return null;
+    }
+
+    private DelayQueue<DelayMessage> copyDelayQueue(String queueName) {
+        if (BrokerLocalCache.delayQueueMap.get(queueName) != null) {
+            DelayQueue<DelayMessage> blockingDeque =
+                    new DelayQueue<>(BrokerLocalCache.delayQueueMap.get(queueName));
+            return blockingDeque;
+        }
+        return null;
+    }
+
 
     /**
+     * 同步当前 server 的所有 queue 数据到另一台服务器，
      * 采用 udp 的方式进行传输数据
      */
     @PostMapping("sync/all/queue")
-    public String syncAllData(@RequestBody String toKid) {
+    public String syncAllData(@RequestBody String toKid) throws InterruptedException {
+
         log.info("receive sync all queue command, to kid : {} ", toKid);
         toKid = JSONObject.parseObject(toKid, String.class);
         ServerInfo serverInfo = null;
@@ -125,7 +180,6 @@ public class ManagerController {
             }
         }
 
-        System.out.println(serverInfo);
         String targetHost = serverInfo.getAddress();
         Integer port = serverInfo.getUdpPort();
 
@@ -134,6 +188,7 @@ public class ManagerController {
         ConcurrentHashMap<String, QueueInfo> toKidQueueInfo = kidQueueInfo.get(toKid);
         ConcurrentHashMap<String, QueueInfo> fromQueueInfo = kidQueueInfo.get(AdminServerCache.kid);
         Iterator<Map.Entry<String, QueueInfo>> iterator = fromQueueInfo.entrySet().iterator();
+
         while (iterator.hasNext()) {
             Map.Entry<String, QueueInfo> infoEntry = iterator.next();
             QueueInfo queueInfo = infoEntry.getValue();
@@ -155,25 +210,26 @@ public class ManagerController {
                 }
 
                 MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
-                        .setId(UUID.randomUUID().toString())
+                        .setId(String.valueOf(AdminServerCache.clusterInfo.getQueueOffsetMap()
+                                .get(queueInfo.getName())))
                         .setDateTime(DateUtils.getNowDate())
                         .setMsgType(2)
                         .setIsAck(true)
                         .putQueueInfo(queueInfo.getName(), type)
                         .build();
                 AdminServerCache.mqudpServer.sendMsg(targetHost, port, mqEntity);
-
                 // 开始同步信息
                 if (queueInfo.getType().equals(QueueType.DELAY)) {
                     // 取出延时队列的信息
-                    DelayQueue<DelayMessage> delayMessages = BrokerLocalCache.delayQueueMap.get(queueInfo.getName());
+                    DelayQueue<DelayMessage> delayMessages = copyDelayqueue(queueInfo.getName());
                     while (!delayMessages.isEmpty()) {
                         AdminServerCache.mqudpServer.sendMsg(targetHost, port,
                                 delayMessages.poll().getMqEntity());
                     }
                 } else {
-                    BlockingDeque<MQMessage.MQEntity> blockingDeque = BrokerLocalCache.queueMap.get(queueInfo.getName());
-                    while (!blockingDeque.isEmpty()) {
+                    BlockingDeque<MQMessage.MQEntity> blockingDeque = copyNormalQueue(queueInfo.getName());
+
+                    while (blockingDeque != null && !blockingDeque.isEmpty()) {
                         AdminServerCache.mqudpServer.sendMsg(targetHost, port, blockingDeque.poll());
                     }
                 }
@@ -182,43 +238,10 @@ public class ManagerController {
         return "0";
     }
 
-
-    @GetMapping("get/queue/info/{queueName}")
-    public Integer getQueue(@PathVariable String queueName) {
-        return BrokerLocalCache.queueMap.get(queueName).size();
+    private DelayQueue<DelayMessage> copyDelayqueue(String name) {
+        return BrokerLocalCache.delayQueueMap.get(name);
     }
 
-
-    @PostMapping("sync/cluster/info")
-    public void syncClusterInfo(@RequestBody String requestStr) {
-
-        // 同步 cluster 信息
-        AdminServerCache.clusterInfo = JSONObject.parseObject(requestStr, ClusterInfo.class);
-
-        // 同步 offset 信息
-        List<String> queueNames = new ArrayList<>();
-        Iterator<Map.Entry<String, QueueInfo>> iterator = BrokerLocalCache.queueInfoMap.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<String, QueueInfo> next = iterator.next();
-            queueNames.add(next.getKey());
-        }
-
-        log.info("同步 offset 到本地");
-        // 设置 offset
-        for (String queueName : queueNames) {
-            // 缓存到本地中
-            String offset = String.valueOf(
-                    AdminServerCache.clusterInfo
-                            .getQueueOffsetMap()
-                            .getOrDefault(queueName, -1l));
-            SyncUtil.saveQueueInfoMap(queueName, offset);
-
-            AdminServerCache.clusterInfo.getKidQueueInfo()
-                    .get(AdminServerCache.kid).get(queueName)
-                    .setOffset(offset);
-        }
-
-    }
 
     /**
      * todo 清空数据
@@ -227,9 +250,13 @@ public class ManagerController {
     public void clearHistoryData(@RequestBody String queueNameListJson) {
         List<String> queueNameList = (List<String>)
                 JSONObject.parseObject(queueNameListJson, ArrayList.class);
-        log.info("start clear cache data...");
-        clearCacheData(queueNameList);
-        log.info("clear cache data complete");
+        if (null != queueNameList && queueNameList.size() > 0) {
+            log.info("start clear cache data...");
+            log.info("queue list : {} ", queueNameList);
+            clearCacheData(queueNameList);
+            log.info("clear cache data complete");
+        }
+
     }
 
     private void clearCacheData(List<String> queueList) {
@@ -260,8 +287,12 @@ public class ManagerController {
         }
     }
 
+
+    /**
+     * 通过请求 leader 获取 netty server 的信息
+     */
     private ServerInfo requestLeader(String requestStr) {
-        String targetUrl = "http://" + AdminServerCache.leaderInfo.getTargetAddress() + "/mq/managerget/get/netty/server/info";
+        String targetUrl = "http://" + AdminServerCache.leaderInfo.getTargetAddress() + "/mq/manager/get/get/netty/server/info";
         String responseStr = HttpUtil.postRequest(targetUrl, requestStr);
         if (StringUtils.isBlank(responseStr)) {
             return JSONObject.parseObject(responseStr, ServerInfo.class);
@@ -270,6 +301,9 @@ public class ManagerController {
         return null;
     }
 
+    /**
+     * 随机获取某个 netty server 的信息
+     */
     private ServerInfo randomNettyServer() {
         Random random = new Random();
         int amount = AdminServerCache.curServers.size();
@@ -277,7 +311,7 @@ public class ManagerController {
         Iterator<ServerInfo> iterator = AdminServerCache.curServers.iterator();
         int cnt = 0;
         ServerInfo serverInfo = null;
-        while (cnt < bound && iterator.hasNext()) {
+        while (cnt <= bound && iterator.hasNext()) {
             serverInfo = iterator.next();
             cnt++;
         }

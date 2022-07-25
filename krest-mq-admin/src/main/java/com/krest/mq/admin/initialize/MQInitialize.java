@@ -31,7 +31,6 @@ public class MQInitialize implements InitializingBean {
         AdminServerCache.clusterInfo.setDuplicate(config.getDuplicate());
         SyncDataUtils.mqConfig = config;
 
-
         // MQ server 缓存文件配置
         KrestFileConfig.maxFileSize = config.getMaxFileSize();
         KrestFileConfig.maxFileCount = config.getMaxFileCount();
@@ -54,12 +53,5 @@ public class MQInitialize implements InitializingBean {
         );
         Thread udpThread = new Thread(udpServerStartRunnable);
         udpThread.start();
-
-        // 查找 leader
-        LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(config));
-
-        // 然后开始收集每个服务的 queue 信息
-        SyncDataUtils.collectQueueInfo();
-
     }
 }

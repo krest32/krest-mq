@@ -25,10 +25,12 @@ public class BrokerBalancer {
             duplicate = AdminServerCache.curServers.size();
         }
 
+        // 初始化数据
+        AdminServerCache.clusterInfo.getQueueAmountMap().clear();
+
         // 记录每个 queue 现有的数量
         ClusterInfo clusterInfo = AdminServerCache.clusterInfo;
         Map<String, Integer> kidQueueAmountMap = new HashMap<>();
-
         countKidAndQueue(clusterInfo, kidQueueAmountMap);
 
         // 开始同步数据
