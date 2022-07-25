@@ -87,10 +87,12 @@ public class MsgResolver {
             String queueName = queueInfo.getKey();
             queueNameList.add(queueName);
             int val = queueInfo.getValue();
-            // 增加缓存设置
-            List<Channel> channels = BrokerLocalCache.queueCtxListMap.getOrDefault(queueName, new ArrayList<>());
-            channels.add(ctx.channel());
-            BrokerLocalCache.queueCtxListMap.put(queueName, channels);
+            // 增加缓存设置, udp remote address 是不存在的
+            if (ctx.channel().remoteAddress() != null) {
+                List<Channel> channels = BrokerLocalCache.queueCtxListMap.getOrDefault(queueName, new ArrayList<>());
+                channels.add(ctx.channel());
+                BrokerLocalCache.queueCtxListMap.put(queueName, channels);
+            }
             // 开始创建消息队列
             BrokerLocalCache.queueInfoMap.put(queueName, getQueueInfo(queueName, val, request.getId()));
             // 如果不存在队列 就进行创建queue, 并开启监听
@@ -105,6 +107,7 @@ public class MsgResolver {
                     BrokerLocalCache.delayQueueMap.put(queueName, new DelayQueue<>());
                 }
                 LocalExecutor.TcpDelayExecutor.execute(new MsgDelaySendRunnable(queueName));
+
             } else {
 
                 if (BrokerLocalCache.queueMap.get(queueName) == null) {

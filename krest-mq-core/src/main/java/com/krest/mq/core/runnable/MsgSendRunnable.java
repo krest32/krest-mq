@@ -27,10 +27,11 @@ public class MsgSendRunnable implements Runnable {
         while (true) {
             MQMessage.MQEntity mqEntity = null;
             try {
+
                 mqEntity = BrokerLocalCache.queueMap.get(queueName).take();
                 List<Channel> channels = BrokerLocalCache.queueCtxListMap.get(queueName);
+                // 开始发送
                 if (null != channels && channels.size() > 0) {
-                    // 开始发送
                     if (sendMsg(mqEntity, channels)) {
                         // 更新本地的缓存的偏移量
                         SyncUtil.saveQueueInfoMap(queueName, mqEntity.getId(), BrokerLocalCache.queueMap.get(queueName).size());

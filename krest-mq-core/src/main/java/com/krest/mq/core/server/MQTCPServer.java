@@ -119,7 +119,7 @@ public class MQTCPServer {
                 } else if (queueInfo.getType().equals(QueueType.DELAY)) {
                     recoverDelayQueue(queueName, queueInfo);
                 } else {
-                    log.error("临时队列：{}", queueName);
+                    log.error("临时队列 -> ：{}", queueName);
                 }
 
             } catch (InvalidProtocolBufferException e) {

@@ -36,38 +36,25 @@ public class MsgPutRunnable implements Runnable {
                 log.error("未知的 queue 或者 queue type");
             } else {
                 if (queueInfo.getType().equals(QueueType.TEMPORARY)) {
-
-                    BrokerLocalCache.queueInfoMap.get(queueName).setAmount(
-                            BrokerLocalCache.queueMap.get(queueName).size()
-                    );
                     BrokerLocalCache.queueMap.get(queueName).put(this.mqEntity);
 
-
                 } else {
+
                     String print = JsonFormat.printer().print(mqEntity);
                     KrestFileHandler.saveData(CacheFileConfig.queueCacheDatePath + queueName,
                             mqEntity.getId(),
                             JSONObject.toJSONString(print));
                     if (queueInfo.getType().equals(QueueType.DELAY)) {
-
                         BrokerLocalCache.delayQueueMap.get(queueName).put(
                                 new DelayMessage(this.mqEntity.getTimeout(), this.mqEntity));
-                        BrokerLocalCache.queueInfoMap.get(queueName).setAmount(
-                                BrokerLocalCache.delayQueueMap.get(queueName).size()
-                        );
                     } else {
-
-                        BrokerLocalCache.queueInfoMap.get(queueName).setAmount(
-                                BrokerLocalCache.queueMap.get(queueName).size()
-                        );
-
-                        BrokerLocalCache.queueMap.get(queueName).put(mqEntity);
-                        System.out.println(BrokerLocalCache.queueMap.get(queueName).size());
+                        BrokerLocalCache.queueMap.get(this.queueName).put(this.mqEntity);
+                        System.out.println(BrokerLocalCache.queueMap.get(this.queueName).size());
                     }
+                    // 更新本地的缓存的偏移量
+                    String offset = BrokerLocalCache.queueInfoMap.get(queueName).getOffset();
+                    SyncUtil.saveQueueInfoMap(queueName, offset, BrokerLocalCache.queueMap.get(queueName).size());
                 }
-                String offset = BrokerLocalCache.queueInfoMap.get(queueName).getOffset();
-                // 更新本地的缓存的偏移量
-                SyncUtil.saveQueueInfoMap(queueName, offset, BrokerLocalCache.queueMap.get(queueName).size());
             }
         } catch (InvalidProtocolBufferException e) {
             log.error(e.getMessage());

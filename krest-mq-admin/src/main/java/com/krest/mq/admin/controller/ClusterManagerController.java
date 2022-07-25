@@ -113,6 +113,9 @@ public class ClusterManagerController {
     public String syncData(@RequestBody String syncInfoJson) {
         SynchInfo synchInfo = JSONObject.parseObject(syncInfoJson, SynchInfo.class);
         // 先新建要同步的队列信息
+        MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
+
+
         MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
                 .setId(synchInfo.getOffset())
                 .setDateTime(DateUtils.getNowDate())
@@ -120,6 +123,7 @@ public class ClusterManagerController {
                 .setIsAck(true)
                 .putQueueInfo(synchInfo.getQueueName(), synchInfo.getType())
                 .build();
+
         AdminServerCache.mqudpServer.sendMsg(synchInfo.getAddress(), synchInfo.getPort(), mqEntity);
 
         // 开始同步数据
