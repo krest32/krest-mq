@@ -1,16 +1,13 @@
 package com.krest.mq.admin.util;
 
 import com.krest.mq.core.cache.AdminServerCache;
-import com.krest.mq.core.entity.QueueInfo;
-import com.krest.mq.core.enums.ClusterRole;
 import com.krest.mq.core.entity.MqRequest;
 import com.krest.mq.core.entity.ServerInfo;
+import com.krest.mq.core.enums.ClusterRole;
 import com.krest.mq.core.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
-
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @Slf4j
@@ -49,9 +46,17 @@ public class ClusterUtil {
      */
     public void initData() {
         AdminServerCache.leaderInfo = null;
+        AdminServerCache.clusterInfo.getQueueLatestKid().clear();
+        AdminServerCache.clusterInfo.getKidQueueInfo().clear();
+        AdminServerCache.clusterInfo.getQueueAmountMap().clear();
+        AdminServerCache.clusterInfo.getQueueSizeMap().clear();
+
+        AdminServerCache.isSelectServer = true;
+        AdminServerCache.isSyncData = true;
+        AdminServerCache.isKidBalanced = true;
+
         AdminServerCache.clusterRole = ClusterRole.Observer;
         AdminServerCache.curServers.clear();
-        AdminServerCache.kidServerMap.clear();
     }
 
 }

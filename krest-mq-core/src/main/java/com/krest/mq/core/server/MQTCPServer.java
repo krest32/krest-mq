@@ -120,6 +120,9 @@ public class MQTCPServer {
                     recoverDelayQueue(queueName, queueInfo);
                 } else {
                     log.error("临时队列 -> ：{}", queueName);
+                    BlockingDeque<MQMessage.MQEntity> curBlockQueue = new LinkedBlockingDeque<>();
+                    BrokerLocalCache.queueInfoMap.get(queueName).setAmount(curBlockQueue.size());
+                    BrokerLocalCache.queueMap.put(queueName, curBlockQueue);
                 }
 
             } catch (InvalidProtocolBufferException e) {

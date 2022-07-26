@@ -12,19 +12,18 @@ import java.util.*;
 @Slf4j
 public class MQConsumerRunnable implements Runnable {
 
-    IdWorker idWorker;
+
     String host;
     int port;
     Object bean;
-    Map<String, Integer> queueInfo;
+    MQMessage.MQEntity requestMSg;
 
-    public MQConsumerRunnable(String host, int port, Map<String, Integer> queueInfo,
-                              Object bean, IdWorker idWorker) {
+    public MQConsumerRunnable(String host, int port,
+                              Object bean,  MQMessage.MQEntity requestMSg) {
         this.host = host;
         this.port = port;
         this.bean = bean;
-        this.idWorker = idWorker;
-        this.queueInfo = queueInfo;
+        this.requestMSg = requestMSg;
     }
 
     /**
@@ -33,23 +32,11 @@ public class MQConsumerRunnable implements Runnable {
     @Override
     public void run() {
         log.info("consumer connect server, host : {} , port : {} ", host, port);
-
-        MQMessage.MQEntity request = registerMSg();
-        MQTCPClient mqConsumer = new MQTCPClient(host, port, request);
+        MQTCPClient mqConsumer = new MQTCPClient(host, port, this.requestMSg);
         ChannelListener inactiveListener = mqConsumer.getInactiveListener();
-        mqConsumer.connect(new ConsumerChannelInitializer(inactiveListener, bean, request));
-        mqConsumer.sendMsg(request);
+        mqConsumer.connect(new ConsumerChannelInitializer(inactiveListener, bean, this.requestMSg));
+        mqConsumer.sendMsg(this.requestMSg);
     }
 
 
-    private MQMessage.MQEntity registerMSg() {
-        MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
-        return builder
-                .setId(String.valueOf(idWorker.nextId()))
-                .setDateTime(DateUtils.getNowDate())
-                .setMsgType(2)
-                .setIsAck(true)
-                .putAllQueueInfo(this.queueInfo)
-                .build();
-    }
 }

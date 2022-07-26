@@ -52,7 +52,7 @@ public class MsgPutRunnable implements Runnable {
                     }
                     // 更新本地的缓存的偏移量
                     String offset = BrokerLocalCache.queueInfoMap.get(queueName).getOffset();
-                    SyncUtil.saveQueueInfoMap(queueName, offset, BrokerLocalCache.queueMap.get(queueName).size());
+                    SyncUtil.saveQueueInfoMap(queueName, offset);
                 }
             }
         } catch (InvalidProtocolBufferException e) {

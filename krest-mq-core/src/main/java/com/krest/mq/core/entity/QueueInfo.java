@@ -1,10 +1,12 @@
 package com.krest.mq.core.entity;
 
+import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.enums.QueueType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.Serializable;
 
@@ -28,17 +30,18 @@ public class QueueInfo implements Serializable {
     String offset;
 
     // 记录当前 queue 的数据量
-    Integer amount = 0;
-
+    Integer amount;
 
     public Integer getAmount() {
-        if (null != type && BrokerLocalCache.queueMap.get(name) != null) {
-            if (type.equals(QueueType.DELAY)) {
-                return BrokerLocalCache.delayQueueMap.get(name).size();
-            } else {
-                return BrokerLocalCache.queueMap.get(name).size();
+        if (!StringUtils.isBlank(kid) && kid.equals(AdminServerCache.kid)) {
+            if (null != type && BrokerLocalCache.queueMap.get(name) != null) {
+                if (type.equals(QueueType.DELAY)) {
+                    return BrokerLocalCache.delayQueueMap.get(name).size();
+                } else {
+                    return BrokerLocalCache.queueMap.get(name).size();
+                }
             }
         }
-        return 0;
+        return amount;
     }
 }

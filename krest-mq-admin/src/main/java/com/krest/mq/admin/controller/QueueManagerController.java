@@ -63,21 +63,23 @@ public class QueueManagerController {
                 entry.getValue().setKid(AdminServerCache.kid);
             }
 
-            // 检查更新 offset
+            // 更新 offset size
             QueueInfo queueInfo = entry.getValue();
-            if (StringUtils.isBlank(queueInfo.getOffset()) || "-1".equals(queueInfo.getOffset())) {
-                if (queueInfo.getType().equals(QueueType.DELAY)) {
-                    DelayQueue<DelayMessage> delayQueue = BrokerLocalCache.delayQueueMap.get(queueInfo.getName());
-                    if (null != delayQueue && delayQueue.size() > 0) {
-                        queueInfo.setOffset(delayQueue.peek().getMqEntity().getId());
-                    }
-                } else {
-                    BlockingDeque<MQMessage.MQEntity> blockingDeque = BrokerLocalCache.queueMap.get(queueInfo.getName());
-                    if (null != blockingDeque && blockingDeque.size() > 0) {
-                        queueInfo.setOffset(blockingDeque.peek().getId());
-                    }
+            if (queueInfo.getType().equals(QueueType.DELAY)) {
+                DelayQueue<DelayMessage> delayQueue = BrokerLocalCache.delayQueueMap.get(queueInfo.getName());
+                if (null != delayQueue && delayQueue.size() > 0) {
+                    queueInfo.setOffset(delayQueue.peek().getMqEntity().getId());
                 }
+                queueInfo.setAmount(null == delayQueue ? -1 : delayQueue.size());
+            } else {
+                BlockingDeque<MQMessage.MQEntity> blockingDeque = BrokerLocalCache.queueMap.get(queueInfo.getName());
+                if (null != blockingDeque && blockingDeque.size() > 0) {
+                    queueInfo.setOffset(blockingDeque.peek().getId());
+                }
+                queueInfo.setAmount(null == blockingDeque ? -1 : blockingDeque.size());
             }
+
+
             entry.setValue(queueInfo);
         }
         return BrokerLocalCache.queueInfoMap;

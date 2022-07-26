@@ -20,8 +20,11 @@ import com.krest.mq.starter.properties.KrestMQProperties;
 import com.krest.mq.starter.uitls.ConnectUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import sun.nio.cs.ext.MacArabic;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
@@ -30,28 +33,53 @@ import java.util.concurrent.FutureTask;
 public class KrestMQTemplate {
 
     MQTCPClient tcpClient;
+    MQMessage.MQEntity registerMsg;
 
 
     public KrestMQTemplate() {
 
         ConnectUtil.initSever();
+        registerMsg = getRegisterMsg();
 
-        MQProducerRunnable runnable = new MQProducerRunnable(
-                ConnectUtil.nettyInfo.getAddress(), ConnectUtil.nettyInfo.getTcpPort(),
-                ConnectUtil.idWorker, this.tcpClient, ConnectUtil.registerMsg);
+        ServerInfo nettyServerInfo
+                = ConnectUtil.getNettyServerInfo(ConnectUtil.mqLeader, this.registerMsg);
 
-        FutureTask<MQTCPClient> futureTask = new FutureTask(runnable);
-        Thread t = new Thread(futureTask);
-        t.start();
+        if (null != nettyServerInfo) {
+            MQProducerRunnable runnable = new MQProducerRunnable(
+                    nettyServerInfo.getAddress(), nettyServerInfo.getTcpPort(),
+                    ConnectUtil.idWorker, this.tcpClient, this.registerMsg);
 
+            FutureTask<MQTCPClient> futureTask = new FutureTask(runnable);
+            Thread t = new Thread(futureTask);
+            t.start();
 
-        try {
-            this.tcpClient = futureTask.get();
-        } catch (InterruptedException e) {
-            log.error(e.getMessage(), e);
-        } catch (ExecutionException e) {
-            log.error(e.getMessage(), e);
+            try {
+                this.tcpClient = futureTask.get();
+            } catch (InterruptedException e) {
+                log.error(e.getMessage(), e);
+            } catch (ExecutionException e) {
+                log.error(e.getMessage(), e);
+            }
+        } else {
+            log.error("producer client error, msg queue does not exist : " + ConnectUtil.mqConfig.getQueue());
         }
+    }
+
+    private MQMessage.MQEntity getRegisterMsg() {
+        MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
+        List<String> queues = ConnectUtil.mqConfig.getQueue();
+        Map<String, Integer> map = new HashMap<>();
+        for (String queue : queues) {
+            map.put(queue, 1);
+        }
+
+        return builder.setId(String.valueOf(ConnectUtil.idWorker.nextId()))
+                .setIsAck(true)
+                .setMsgType(1)
+                .setDateTime(DateUtils.getNowDate())
+                .addQueue(MQNormalConfig.defaultAckQueue)
+                .putAllQueueInfo(map)
+                .build();
     }
 
     /**

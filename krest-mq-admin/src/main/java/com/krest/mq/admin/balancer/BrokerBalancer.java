@@ -17,7 +17,6 @@ public class BrokerBalancer {
     public static void run() {
 
         AdminServerCache.isKidBalanced = false;
-
         Integer duplicate = AdminServerCache.clusterInfo.getDuplicate();
         if (duplicate > AdminServerCache.curServers.size()) {
             log.error("config duplicate is : {} , but mq server number is : {}", duplicate, AdminServerCache.curServers.size());
@@ -25,33 +24,29 @@ public class BrokerBalancer {
             duplicate = AdminServerCache.curServers.size();
         }
 
-        // 初始化数据
-        AdminServerCache.clusterInfo.getQueueAmountMap().clear();
 
         // 记录每个 queue 现有的数量
-        ClusterInfo clusterInfo = AdminServerCache.clusterInfo;
         Map<String, Integer> kidQueueAmountMap = new HashMap<>();
-        countKidAndQueue(clusterInfo, kidQueueAmountMap);
+        countKidAndQueue(kidQueueAmountMap);
 
         // 开始同步数据
-        doSyncData(duplicate, clusterInfo, kidQueueAmountMap);
+        doSyncData(duplicate, kidQueueAmountMap);
 
         AdminServerCache.isKidBalanced = true;
     }
 
-    private static void doSyncData(Integer duplicate, ClusterInfo clusterInfo, Map<String, Integer> kidQueueAmountMap) {
-        // 进行升序排序： 注意：要有排序的描述条件，否则无法排序
+    private static void doSyncData(Integer duplicate, Map<String, Integer> kidQueueAmountMap) {
         PriorityQueue<Map.Entry<String, Integer>> sortedQueue = new PriorityQueue<>(
                 Comparator.comparingInt(Map.Entry::getValue));
 
+        // 根据 queue 的数量进行升序排序
         Iterator<Map.Entry<String, Integer>> iterator = kidQueueAmountMap.entrySet().iterator();
         while (iterator.hasNext()) {
             sortedQueue.add(iterator.next());
         }
 
         // 开始遍历记录的 queue 数量的列表
-        Iterator<Map.Entry<String, Integer>> queueAmountIt =
-                clusterInfo.getQueueAmountMap().entrySet().iterator();
+        Iterator<Map.Entry<String, Integer>> queueAmountIt = AdminServerCache.clusterInfo.getQueueAmountMap().entrySet().iterator();
 
         while (queueAmountIt.hasNext()) {
             Map.Entry<String, Integer> entry = queueAmountIt.next();
@@ -66,7 +61,7 @@ public class BrokerBalancer {
 
                 // 获取 from kid
                 // 因为是节点对节点的复制，所以 from kid 上面的队列数量应该是最少的
-                String fromKid = getFromKid(queueName, clusterInfo);
+                String fromKid = getFromKid(queueName, AdminServerCache.clusterInfo);
                 ServerInfo fromServer = AdminServerCache.kidServerMap.get(fromKid);
 
                 // 开始发送同步数据的请求
@@ -75,29 +70,24 @@ public class BrokerBalancer {
                 HttpUtil.postRequest(request);
 
                 // 更新当前 cluster 的数据信息
-                updateEntryInfo(fromKid, toKid, entry, clusterInfo, poll);
+                updateEntryInfo(fromKid, toKid, entry, AdminServerCache.clusterInfo, poll);
                 sortedQueue.add(poll);
             }
         }
     }
 
 
-    private static void countKidAndQueue(ClusterInfo clusterInfo, Map<String, Integer> kidQueueAmountMap) {
-        ConcurrentHashMap<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = clusterInfo.getKidQueueInfo();
-        Iterator<Map.Entry<String, ConcurrentHashMap<String, QueueInfo>>> kidQueueIterator = kidQueueInfo.entrySet().iterator();
-        while (kidQueueIterator.hasNext()) {
-            Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> mapEntry = kidQueueIterator.next();
-            Iterator<Map.Entry<String, QueueInfo>> queueInfoIterator = mapEntry.getValue().entrySet().iterator();
-            int count = 0;
-            while (queueInfoIterator.hasNext()) {
-                Map.Entry<String, QueueInfo> infoEntry = queueInfoIterator.next();
-                QueueInfo queueInfo = infoEntry.getValue();
-                String queueName = queueInfo.getName();
-                Integer amount = clusterInfo.getQueueAmountMap().getOrDefault(queueName, 0);
-                clusterInfo.getQueueAmountMap().put(queueName, amount + 1);
-                count++;
+    private static void countKidAndQueue(Map<String, Integer> kidQueueAmountMap) {
+        ConcurrentHashMap<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo
+                = AdminServerCache.clusterInfo.getKidQueueInfo();
+        Iterator<Map.Entry<String, ConcurrentHashMap<String, QueueInfo>>> kidQueueIterator
+                = kidQueueInfo.entrySet().iterator();
+        // 先找到没有任何队列的 kid
+        for (ServerInfo curServer : AdminServerCache.curServers) {
+            String kid = curServer.getKid();
+            if (!kidQueueInfo.containsKey(kid)) {
+                kidQueueAmountMap.put(kid, 0);
             }
-            kidQueueAmountMap.put(mapEntry.getKey(), count);
         }
     }
 
@@ -110,6 +100,10 @@ public class BrokerBalancer {
         ConcurrentHashMap<String, QueueInfo> toMap = clusterInfo.getKidQueueInfo().get(toKid);
         Iterator<Map.Entry<String, QueueInfo>> iterator = fromMap.entrySet().iterator();
 
+        if (toMap == null) {
+            toMap = new ConcurrentHashMap<>();
+        }
+
         while (iterator.hasNext()) {
             Map.Entry<String, QueueInfo> next = iterator.next();
             String queueName = next.getKey();
@@ -118,6 +112,8 @@ public class BrokerBalancer {
                 poll.setValue(poll.getValue() + 1);
             }
         }
+
+        clusterInfo.getKidQueueInfo().put(toKid, toMap);
     }
 
     /**

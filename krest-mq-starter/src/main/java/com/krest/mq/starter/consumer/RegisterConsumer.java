@@ -1,6 +1,10 @@
 package com.krest.mq.starter.consumer;
 
+import com.krest.mq.core.entity.MQMessage;
+import com.krest.mq.core.entity.QueueInfo;
+import com.krest.mq.core.entity.ServerInfo;
 import com.krest.mq.core.enums.QueueType;
+import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.IdWorker;
 import com.krest.mq.starter.anno.KrestConsumer;
 import com.krest.mq.starter.anno.KrestMQListener;
@@ -62,15 +66,32 @@ public class RegisterConsumer implements BeanPostProcessor {
                 }
             }
 
+            MQMessage.MQEntity requestMsg = registerMSg(queueInfo);
+
+
+            ServerInfo nettyServerInfo = ConnectUtil.getNettyServerInfo(ConnectUtil.mqLeader, requestMsg);
+
+
             // 新建客户端
             MQConsumerRunnable runnable = new MQConsumerRunnable(
-                    ConnectUtil.nettyInfo.getAddress(), ConnectUtil.nettyInfo.getTcpPort(), queueInfo, bean,
-                    ConnectUtil.idWorker
+                    nettyServerInfo.getAddress(), nettyServerInfo.getTcpPort(),
+                    bean, requestMsg
             );
 
             Thread thread = new Thread(runnable);
             thread.start();
         }
         return bean;
+    }
+
+    private MQMessage.MQEntity registerMSg(Map<String, Integer> queueInfo) {
+        MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
+        return builder
+                .setId(String.valueOf(ConnectUtil.idWorker.nextId()))
+                .setDateTime(DateUtils.getNowDate())
+                .setMsgType(2)
+                .setIsAck(true)
+                .putAllQueueInfo(queueInfo)
+                .build();
     }
 }

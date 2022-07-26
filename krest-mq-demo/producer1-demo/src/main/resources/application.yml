@@ -13,4 +13,10 @@ krest:
     datacenterId: 1
     server:
       - localhost:9001
-#      - localhost:9002
+      - localhost:9002
+      - localhost:9003
+      # 将要发消息的队列
+    queue:
+      - demo
+      - demo1
+      - demo2

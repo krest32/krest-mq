@@ -11,4 +11,5 @@ public class KrestMQProperties {
     int workerId;
     int datacenterId;
     List<String> server;
+    List<String> queue;
 }
