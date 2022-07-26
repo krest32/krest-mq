@@ -1,11 +1,14 @@
 package com.krest.mq.admin.controller;
 
 
+import com.krest.mq.admin.balancer.BrokerBalancer;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
 import com.krest.mq.admin.util.ClusterUtil;
 import com.krest.mq.admin.util.SyncDataUtils;
 import com.krest.mq.core.cache.AdminServerCache;
+import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.entity.ClusterInfo;
+import com.krest.mq.core.entity.MQRespFuture;
 import com.krest.mq.core.entity.MqRequest;
 import com.krest.mq.core.entity.ServerInfo;
 import com.krest.mq.core.enums.ClusterRole;
@@ -20,6 +23,9 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("mq/server")
 public class ClusterInfoController {
+
+    String clearHisDataPath = "/mq/manager/clear/overdue/data";
+
 
     @Autowired
     ClusterUtil clusterUtil;
@@ -59,7 +65,8 @@ public class ClusterInfoController {
 
 
     /**
-     * 向 leader 中注册 follower
+     * 向 leader 中注册 follower，
+     * 然后清空自身之前存在的数据信息，以便更好的接入集群中
      * todo 逻辑存在漏洞，待修改
      */
     @PostMapping("register")
@@ -67,14 +74,25 @@ public class ClusterInfoController {
         // 如果正在选择 Leader, 那么就进入等到状态
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
             log.info("receive new service register : " + serverInfo);
+            // 清空原始数据
+            clearHisData(serverInfo);
+            // 添加当前 leader的服务中
             AdminServerCache.curServers.add(serverInfo);
-
+            // 进行负载均很
+            BrokerBalancer.run();
             // 同步集群的 queue 信息
             SyncDataUtils.syncClusterInfo();
+            // 返回 Leader 的信息
             return AdminServerCache.leaderInfo;
         }
         // 返回一个空对象
         return null;
+    }
+
+    private void clearHisData(ServerInfo serverInfo) {
+        String targetUrl = "http:\\" + serverInfo.getTargetAddress() + clearHisDataPath;
+        MqRequest request = new MqRequest(targetUrl, null);
+        HttpUtil.postRequest(request);
     }
 
     /**
@@ -126,7 +144,7 @@ public class ClusterInfoController {
     }
 
     /**
-     *  普通选举 leader
+     * 普通选举 leader
      */
     @PostMapping("select/leader")
     public String selectLeader(@RequestBody ServerInfo server) {

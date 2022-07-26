@@ -20,12 +20,15 @@ public class SyncDataUtils {
     public static MqConfig mqConfig;
     static String getQueueInfoPath = "/queue/manager/get/base/queue/info";
     static String syncClusterInfoPath = "/mq/manager/sync/cluster/info";
-    static String syncQueueDataPath = "/mq/manager/sync/queue/data";
-    static String clearBrokerDataPath = "/mq/manager/clear/overdue/data";
 
+    /**
+     * 1. 清空新注册节点的数据
+     * 2. 同步 cluster info
+     */
     public static void syncClusterInfo() {
 
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+
             log.info("start sync cluster info and data ...");
             AdminServerCache.isSyncData = true;
             ClusterInfo clusterInfo = new ClusterInfo();
@@ -33,53 +36,10 @@ public class SyncDataUtils {
             clusterInfo.setQueueOffsetMap(AdminServerCache.clusterInfo.getQueueOffsetMap());
             clusterInfo.setQueueSizeMap(AdminServerCache.clusterInfo.getQueueSizeMap());
 
+
+            // 检查 kid 上面的 queue 信息是否是最新的， 如果不是就删除
             getQueueInfoMap(clusterInfo);
 
-            ConcurrentHashMap<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfoMap = clusterInfo.getKidQueueInfo();
-            Iterator<Map.Entry<String, ConcurrentHashMap<String, QueueInfo>>> iterator = kidQueueInfoMap.entrySet().iterator();
-
-            while (iterator.hasNext()) {
-                Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> next = iterator.next();
-                String kid = next.getKey();
-                ConcurrentHashMap<String, QueueInfo> queueInfoMap = next.getValue();
-                Iterator<Map.Entry<String, QueueInfo>> queueInfoMapIt = queueInfoMap.entrySet().iterator();
-                Map<String, Integer> readyQueueInfoMap = new HashMap<>();
-                List<String> queueNameList = new ArrayList<>();
-
-                // 检查 kid 上面的 queue 信息是否是最新的， 如果不是就删除
-                // clearOverdueData(kid, readyQueueInfoMap, queueNameList, queueInfoMapIt, clusterInfo);
-
-                // 开始同步最新的数据
-                Iterator<Map.Entry<String, Integer>> readyIt = readyQueueInfoMap.entrySet().iterator();
-                while (readyIt.hasNext()) {
-                    Map.Entry<String, Integer> entry = readyIt.next();
-                    SynchInfo synchInfo = new SynchInfo();
-                    synchInfo.setType(entry.getValue());
-                    synchInfo.setQueueName(entry.getKey());
-                    synchInfo.setOffset(String.valueOf(clusterInfo.getQueueOffsetMap().get(entry.getKey())));
-                    synchInfo.setAddress(AdminServerCache.kidServerMap.get(kid).getAddress());
-                    synchInfo.setPort(AdminServerCache.kidServerMap.get(kid).getUdpPort());
-
-                    ServerInfo latestQueueServer = null;
-                    String latestKid = clusterInfo.getQueueLatestKid().get(entry.getKey());
-                    for (ServerInfo serverInfo : mqConfig.getServerList()) {
-                        if (serverInfo.getKid().equals(latestKid)) {
-                            latestQueueServer = serverInfo;
-                            break;
-                        }
-                    }
-
-                    // 设置 当前 queue 数据所以的 最新 server kid 数据信息地址
-//                    if (latestQueueServer != null) {
-//                        String targetUrl = "http://" + latestQueueServer.getTargetAddress() + syncQueueDataPath;
-//                        MqRequest request = new MqRequest(targetUrl, synchInfo);
-//                        HttpUtil.postRequest(request);
-//                    }
-                }
-            }
-
-            // 清空完数据， 收集各个节点的 queue info 信息
-            getQueueInfoMap(clusterInfo);
 
             // 然后发送已经同步的 cluster 信息
             for (ServerInfo curServer : AdminServerCache.curServers) {
@@ -123,51 +83,6 @@ public class SyncDataUtils {
                     queueInfoMap.put(queueName, tempQueueInfo);
                 }
                 clusterInfo.getKidQueueInfo().put(curServer.getKid(), queueInfoMap);
-            }
-        }
-    }
-
-    private static void clearOverdueData(String kid,
-                                         Map<String, Integer> readyQueueInfoMap,
-                                         List<String> queueNameList,
-                                         Iterator<Map.Entry<String, QueueInfo>> queueInfoMapIt,
-                                         ClusterInfo clusterInfo) {
-
-        while (queueInfoMapIt.hasNext()) {
-            Map.Entry<String, QueueInfo> infoEntry = queueInfoMapIt.next();
-            String queueName = infoEntry.getKey();
-            Long offset = Long.valueOf(StringUtils.isBlank(infoEntry.getValue().getOffset()) ? "-1" : infoEntry.getValue().getOffset());
-            Integer tempAmount = infoEntry.getValue().getAmount();
-            Integer maxAmount = clusterInfo.getQueueSizeMap().getOrDefault(queueName, 0);
-
-            if (clusterInfo.getQueueOffsetMap().get(queueName) != null) {
-                if (offset.compareTo(clusterInfo.getQueueOffsetMap().get(queueName)) < 0
-                        || tempAmount != maxAmount) {
-                    QueueType queueType = infoEntry.getValue().getType();
-                    Integer type = 0;
-                    switch (queueType) {
-                        case PERMANENT:
-                            type = 1;
-                            break;
-                        case TEMPORARY:
-                            type = 2;
-                            break;
-                        case DELAY:
-                            type = 3;
-                            break;
-                    }
-                    queueNameList.add(queueName);
-                    readyQueueInfoMap.put(queueName, type);
-                }
-            }
-        }
-
-        // 开始删除过期数据
-        for (ServerInfo curServer : AdminServerCache.curServers) {
-            if (curServer.getKid().equals(kid)) {
-                String targetUrl = "http://" + curServer.getTargetAddress() + clearBrokerDataPath;
-                MqRequest request = new MqRequest(targetUrl, queueNameList);
-                HttpUtil.postRequest(request);
             }
         }
     }

@@ -106,68 +106,6 @@ public class ClusterManagerController {
 
 
     /**
-     * 同步当前 server 的某一个 queue 数据到另一台服务器，
-     * 采用 udp 的方式进行传输数据
-     */
-    @PostMapping("sync/queue/data")
-    public String syncData(@RequestBody String syncInfoJson) {
-        SynchInfo synchInfo = JSONObject.parseObject(syncInfoJson, SynchInfo.class);
-        // 先新建要同步的队列信息
-        MQMessage.MQEntity.Builder builder = MQMessage.MQEntity.newBuilder();
-
-
-        MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
-                .setId(synchInfo.getOffset())
-                .setDateTime(DateUtils.getNowDate())
-                .setMsgType(2)
-                .setIsAck(true)
-                .putQueueInfo(synchInfo.getQueueName(), synchInfo.getType())
-                .build();
-
-        AdminServerCache.mqudpServer.sendMsg(synchInfo.getAddress(), synchInfo.getPort(), mqEntity);
-
-        // 开始同步数据
-        if (!synchInfo.getType().equals(3)) {
-            // 取出普通队列
-            BlockingDeque<MQMessage.MQEntity> blockingDeque = copyNormalQueue(synchInfo.getQueueName());
-            System.out.println(synchInfo);
-            System.out.println(blockingDeque.size());
-            while (null != blockingDeque && !blockingDeque.isEmpty()) {
-                AdminServerCache.mqudpServer.sendMsg(synchInfo.getAddress(), synchInfo.getPort(), blockingDeque.poll());
-            }
-        } else {
-            // 取出延时队列的信息
-            DelayQueue<DelayMessage> delayMessages = copyDelayQueue(synchInfo.getQueueName());
-            while (null != delayMessages && !delayMessages.isEmpty()) {
-                AdminServerCache.mqudpServer.sendMsg(synchInfo.getAddress(), synchInfo.getPort(),
-                        delayMessages.poll().getMqEntity());
-            }
-        }
-
-        return "0";
-    }
-
-    private BlockingDeque<MQMessage.MQEntity> copyNormalQueue(String queueName) {
-        if (BrokerLocalCache.queueMap.get(queueName) != null) {
-            BlockingDeque<MQMessage.MQEntity> blockingDeque =
-                    new LinkedBlockingDeque<>(BrokerLocalCache.queueMap.get(queueName));
-            return blockingDeque;
-
-        }
-        return null;
-    }
-
-    private DelayQueue<DelayMessage> copyDelayQueue(String queueName) {
-        if (BrokerLocalCache.delayQueueMap.get(queueName) != null) {
-            DelayQueue<DelayMessage> blockingDeque =
-                    new DelayQueue<>(BrokerLocalCache.delayQueueMap.get(queueName));
-            return blockingDeque;
-        }
-        return null;
-    }
-
-
-    /**
      * 同步当前 server 的所有 queue 数据到另一台服务器，
      * 采用 udp 的方式进行传输数据
      */
@@ -225,7 +163,7 @@ public class ClusterManagerController {
                 // 开始同步信息
                 if (queueInfo.getType().equals(QueueType.DELAY)) {
                     // 取出延时队列的信息
-                    DelayQueue<DelayMessage> delayMessages = copyDelayqueue(queueInfo.getName());
+                    DelayQueue<DelayMessage> delayMessages = copyDelayQueue(queueInfo.getName());
                     while (!delayMessages.isEmpty()) {
                         AdminServerCache.mqudpServer.sendMsg(targetHost, port,
                                 delayMessages.poll().getMqEntity());
@@ -242,7 +180,7 @@ public class ClusterManagerController {
         return "0";
     }
 
-    private DelayQueue<DelayMessage> copyDelayqueue(String name) {
+    private DelayQueue<DelayMessage> copyDelayQueue(String name) {
         return BrokerLocalCache.delayQueueMap.get(name);
     }
 
@@ -251,17 +189,21 @@ public class ClusterManagerController {
      * todo 清空数据
      */
     @PostMapping("clear/overdue/data")
-    public void clearHistoryData(@RequestBody String queueNameListJson) {
-        List<String> queueNameList = (List<String>)
-                JSONObject.parseObject(queueNameListJson, ArrayList.class);
-        if (null != queueNameList && queueNameList.size() > 0) {
-            log.info("start clear cache data...");
-            log.info("queue list : {} ", queueNameList);
-            clearCacheData(queueNameList);
-            log.info("clear cache data complete");
+    public void clearHistoryData() {
+        ConcurrentHashMap<String, QueueInfo> queueInfoMap = BrokerLocalCache.queueInfoMap;
+        Iterator<Map.Entry<String, QueueInfo>> iterator = queueInfoMap.entrySet().iterator();
+        List<String> queueNameList = new ArrayList<>();
+        while (iterator.hasNext()) {
+            Map.Entry<String, QueueInfo> next = iterator.next();
+            QueueInfo queueInfo = next.getValue();
+            queueNameList.add(queueInfo.getName());
         }
-
+        log.info("start clear cache data...");
+        log.info("ready clear queue list : {} ", queueNameList);
+        clearCacheData(queueNameList);
+        log.info("clear cache data complete");
     }
+
 
     private void clearCacheData(List<String> queueList) {
         // 删除文件夹
@@ -280,15 +222,26 @@ public class ClusterManagerController {
             BrokerLocalCache.delayQueueMap.remove(queueList.get(i));
             // 清除 queue 与 ctx 对应 map
             BrokerLocalCache.queueCtxListMap.remove(queueList.get(i));
-//            // 清除 回复队列
-//            BrokerLocalCache.responseQueue.clear();
-//            // 清除所有的 channel
-//            BrokerLocalCache.clientChannels.clear();
-//            // 清除待处理的 future 信息
-//            BrokerLocalCache.respFutureMap.clear();
-//            // 清除 ctx 与 queue 对应的 map
-//            BrokerLocalCache.ctxQueueListMap.clear();
+            // 清除 回复队列
+            BrokerLocalCache.responseQueue.clear();
+            // 清除所有的 channel
+            BrokerLocalCache.clientChannels.clear();
+            // 清除待处理的 future 信息
+            BrokerLocalCache.respFutureMap.clear();
+            // 清除 ctx 与 queue 对应的 map
+            BrokerLocalCache.ctxQueueListMap.clear();
         }
+    }
+
+
+    private BlockingDeque<MQMessage.MQEntity> copyNormalQueue(String queueName) {
+        if (BrokerLocalCache.queueMap.get(queueName) != null) {
+            BlockingDeque<MQMessage.MQEntity> blockingDeque =
+                    new LinkedBlockingDeque<>(BrokerLocalCache.queueMap.get(queueName));
+            return blockingDeque;
+
+        }
+        return null;
     }
 
 

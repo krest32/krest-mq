@@ -49,7 +49,6 @@ public class MsgPutRunnable implements Runnable {
                                 new DelayMessage(this.mqEntity.getTimeout(), this.mqEntity));
                     } else {
                         BrokerLocalCache.queueMap.get(this.queueName).put(this.mqEntity);
-                        System.out.println(BrokerLocalCache.queueMap.get(this.queueName).size());
                     }
                     // 更新本地的缓存的偏移量
                     String offset = BrokerLocalCache.queueInfoMap.get(queueName).getOffset();
