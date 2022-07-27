@@ -45,8 +45,7 @@ public class BrokerBalancer {
     }
 
     private static void doSyncData(Integer duplicate) {
-
-        // 开始遍历记录的 queue 数量的列表
+  // 开始遍历记录的 queue 数量的列表
         for (ServerInfo curServer : AdminServerCache.curServers) {
             if (checkBrokerQueueInfo(curServer)) {
                 // 清空原始数据
@@ -68,9 +67,10 @@ public class BrokerBalancer {
             String queueName = entry.getKey();
             Integer count = AdminServerCache.clusterInfo.getQueueAmountMap().get(queueName);
             // 第一种同步情况， 直接复制缺失的 queue 到对应的 kid
+
             if (count < duplicate) {
                 // 获取 from kid
-                String fromKid = getFromKid(queueName, AdminServerCache.clusterInfo);
+                String fromKid = getFromKid(queueName);
                 ServerInfo fromServer = AdminServerCache.kidServerMap.get(fromKid);
 
                 String toKid = getToKid(fromKid);
@@ -117,24 +117,8 @@ public class BrokerBalancer {
         return toKid;
     }
 
-
-    /**
-     * 获取包含 queue 的最少 queue amount 的 kid
-     */
-    private static String getFromKid(String queueName, ClusterInfo clusterInfo) {
-        String kid = null;
-        Integer queueAmount = Integer.MAX_VALUE;
-        Iterator<Map.Entry<String, ConcurrentHashMap<String, QueueInfo>>> iterator = clusterInfo.getKidQueueInfo().entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> next = iterator.next();
-            String tempKid = next.getKey();
-            ConcurrentHashMap<String, QueueInfo> infoMap = next.getValue();
-            if (infoMap.containsKey(queueName) && infoMap.size() < queueAmount) {
-                kid = tempKid;
-                queueAmount = infoMap.size();
-            }
-        }
-        return kid;
+    private static String getFromKid(String queueName) {
+        return AdminServerCache.clusterInfo.getQueueLatestKid().get(queueName);
     }
 
 
@@ -153,20 +137,25 @@ public class BrokerBalancer {
 
                 String queueName = tempQueueInfo.getName();
                 // 判断值是否存在，不存在给定默认值
-                Long tempOffset = Long.valueOf(tempQueueInfo.getOffset() == null
-                        ? "-1L" : tempQueueInfo.getOffset());
+                Long tempOffset = Long.valueOf(
+                        tempQueueInfo.getOffset() == null
+                                ? "-1L" : tempQueueInfo.getOffset()
+                );
+
                 Integer tempSize = tempQueueInfo.getAmount() == null
                         ? -1 : tempQueueInfo.getAmount();
 
                 // 检查 offset 和 amount, 如果 offset 和 amount 有一处不一致，那么就删除
-                Long offset = Long.valueOf(AdminServerCache.clusterInfo.getQueueOffsetMap().get(queueName) == null
-                        ? -1 : AdminServerCache.clusterInfo.getQueueOffsetMap().get(queueName));
+                Long offset = Long.valueOf(
+                        AdminServerCache.clusterInfo.getQueueOffsetMap().get(queueName) == null
+                                ? -1 : AdminServerCache.clusterInfo.getQueueOffsetMap().get(queueName)
+                );
                 Integer size = AdminServerCache.clusterInfo.getQueueSizeMap().get(queueName) == null
                         ? -1 : AdminServerCache.clusterInfo.getQueueSizeMap().get(queueName);
 
+
                 // 如果 集群的偏移量 大于 新注册的 broker, 说明 broker 的数据是旧的， 执行删除
                 if (offset.compareTo(tempOffset) > 0) {
-                    System.out.println(1);
                     return true;
                 }
                 // 如果 偏移量相同，但是新注册的 broker queue size 大于 cluster 中的 queue size，
