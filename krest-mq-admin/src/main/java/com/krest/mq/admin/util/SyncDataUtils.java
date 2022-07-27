@@ -28,11 +28,18 @@ public class SyncDataUtils {
      * 1. 清空新注册节点的数据
      * 2. 同步 cluster info
      */
-    public static void syncClusterInfo() {
+    public synchronized static void syncClusterInfo() {
 
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
-            ClusterInfo clusterInfo = AdminServerCache.clusterInfo;
+
+            if (AdminServerCache.isSyncData) {
+                log.info("still in sync cluster info, please wait next run schedule job");
+                return;
+            }
+
             AdminServerCache.isSyncData = true;
+            ClusterInfo clusterInfo = AdminServerCache.clusterInfo;
+
             // 检查 kid 上面的 queue 信息是否是最新的， 如果不是就删除
             getQueueInfoMap(clusterInfo);
 
@@ -43,8 +50,8 @@ public class SyncDataUtils {
                 HttpUtil.postRequest(request);
             }
 
-            log.info("sync cluster info and data complete");
             AdminServerCache.isSyncData = false;
+            log.info("sync cluster info and data complete");
         }
     }
 

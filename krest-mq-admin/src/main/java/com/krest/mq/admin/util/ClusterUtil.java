@@ -50,10 +50,7 @@ public class ClusterUtil {
         AdminServerCache.clusterInfo.getKidQueueInfo().clear();
         AdminServerCache.clusterInfo.getQueueAmountMap().clear();
         AdminServerCache.clusterInfo.getQueueSizeMap().clear();
-
-        AdminServerCache.isSelectServer = true;
-        AdminServerCache.isSyncData = true;
-        AdminServerCache.isKidBalanced = true;
+        AdminServerCache.clusterInfo.getQueueOffsetMap().clear();
 
         AdminServerCache.clusterRole = ClusterRole.Observer;
         AdminServerCache.curServers.clear();

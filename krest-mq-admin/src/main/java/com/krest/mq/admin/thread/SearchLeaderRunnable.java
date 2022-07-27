@@ -31,16 +31,17 @@ public class SearchLeaderRunnable implements Runnable {
     @Override
     public void run() {
 
-        AdminServerCache.isSelectServer = true;
 
         if (null == AdminServerCache.leaderInfo) {
+
+            AdminServerCache.isSelectServer = true;
             // 寻找 Leader
             searchLeader();
             // 选举 Leader
             selectLeader();
-        }
 
-        AdminServerCache.isSelectServer = false;
+            AdminServerCache.isSelectServer = false;
+        }
 
         SyncDataUtils.syncClusterInfo();
 

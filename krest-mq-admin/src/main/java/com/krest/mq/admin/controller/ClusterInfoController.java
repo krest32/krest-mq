@@ -79,7 +79,6 @@ public class ClusterInfoController {
             log.info("receive new service register : " + serverInfo);
             // 添加当前 leader的服务中
             AdminServerCache.curServers.add(serverInfo);
-
             // 同步集群的 queue 信息
             SyncDataUtils.syncClusterInfo();
             // 进行检查， 判断新注册的节点上的队列是否在集群中存在，只要存在一条就全部删除

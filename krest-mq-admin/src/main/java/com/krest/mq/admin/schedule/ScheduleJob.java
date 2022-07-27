@@ -97,7 +97,6 @@ public class ScheduleJob {
                 }
             }
         }
-
     }
 
     /**
@@ -105,12 +104,13 @@ public class ScheduleJob {
      */
     @Scheduled(cron = "0/30 * * * * ?")
     public void reBalanceQueue() {
-        // 只有整个集群 ok 的情况下， 才会进行数据同步任务
-        if (AdminServerCache.isSelectServer || AdminServerCache.isSyncData)
-            return;
 
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+            if (AdminServerCache.isSelectServer)
+                return;
+
             SyncDataUtils.syncClusterInfo();
+
             BrokerBalancer.run();
         }
     }

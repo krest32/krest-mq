@@ -14,9 +14,15 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class BrokerBalancer {
 
-    public static void run() {
+    public synchronized static void run() {
 
-        AdminServerCache.isKidBalanced = false;
+        if (AdminServerCache.isKidBalanced) {
+            log.info("still in balance data, please next time");
+            return;
+        }
+
+        AdminServerCache.isKidBalanced = true;
+
         Integer duplicate = AdminServerCache.clusterInfo.getDuplicate();
         if (duplicate > AdminServerCache.curServers.size()) {
             log.error("config duplicate is : {} , but mq server number is : {}", duplicate, AdminServerCache.curServers.size());
@@ -24,15 +30,13 @@ public class BrokerBalancer {
             duplicate = AdminServerCache.curServers.size();
         }
 
-
         // 记录每个 queue 现有的数量
         Map<String, Integer> kidQueueAmountMap = new HashMap<>();
         countKidAndQueue(kidQueueAmountMap);
-
         // 开始同步数据
         doSyncData(duplicate, kidQueueAmountMap);
 
-        AdminServerCache.isKidBalanced = true;
+        AdminServerCache.isKidBalanced = false;
     }
 
     private static void doSyncData(Integer duplicate, Map<String, Integer> kidQueueAmountMap) {
