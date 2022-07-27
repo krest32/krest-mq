@@ -64,7 +64,6 @@ public class SyncDataUtils {
         clusterInfo.getQueueSizeMap().clear();
         clusterInfo.getKidQueueInfo().clear();
 
-
         for (ServerInfo curServer : AdminServerCache.curServers) {
             // 获取 queue info Map
             String targetUrl = "http://" + curServer.getTargetAddress() + getQueueInfoPath;
@@ -81,17 +80,16 @@ public class SyncDataUtils {
                     JSONObject jsonObject = mapEntry.getValue();
                     QueueInfo tempQueueInfo = getQueueInfo(jsonObject);
                     String queueName = tempQueueInfo.getName();
-
                     // 统计 queue 在集群中的数量
                     setQueueAmount(clusterInfo, queueName);
-
                     // 设置每个 queue 的 offset
                     setQueueOffsetAndSize(clusterInfo, curServer, tempQueueInfo, queueName);
-
                     // 设置 queue info map
                     queueInfoMap.put(queueName, tempQueueInfo);
                 }
                 clusterInfo.getKidQueueInfo().put(curServer.getKid(), queueInfoMap);
+            } else {
+                clusterInfo.getKidQueueInfo().put(curServer.getKid(), new ConcurrentHashMap<>());
             }
         }
     }

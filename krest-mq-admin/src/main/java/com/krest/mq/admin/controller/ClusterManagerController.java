@@ -110,38 +110,51 @@ public class ClusterManagerController {
     }
 
     private ServerInfo doGetNettyServer(MQMessage.MQEntity mqEntity) {
-        Map<String, Integer> queueInfoMap = mqEntity.getQueueInfoMap();
-        Iterator<Map.Entry<String, Integer>> msgIterator = queueInfoMap.entrySet().iterator();
+        ServerInfo nettyServer = null;
+        int maxRelated = Integer.MIN_VALUE;
+
+
         ConcurrentHashMap<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = AdminServerCache.clusterInfo.getKidQueueInfo();
-        Iterator<Map.Entry<String, ConcurrentHashMap<String, QueueInfo>>> clusterIterator = kidQueueInfo.entrySet().iterator();
+        Iterator<Map.Entry<String, ConcurrentHashMap<String, QueueInfo>>> kidQueueInfoIterator = kidQueueInfo.entrySet().iterator();
+        while (kidQueueInfoIterator.hasNext()) {
+            Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> next = kidQueueInfoIterator.next();
+            ConcurrentHashMap<String, QueueInfo> tempQueueInfoMap = next.getValue();
+            Iterator<Map.Entry<String, QueueInfo>> iterator = tempQueueInfoMap.entrySet().iterator();
 
-        while (clusterIterator.hasNext()) {
-            Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> next = clusterIterator.next();
-            ConcurrentHashMap<String, QueueInfo> value = next.getValue();
-
-            // 判断 消费者监听的队列是否全部在某个节点上存在
-            boolean flag = true;
-            while (msgIterator.hasNext()) {
-                Map.Entry<String, Integer> entry = msgIterator.next();
-                String queueName = entry.getKey();
-                if (value.containsKey(queueName)) {
-                    continue;
-                } else {
-                    flag = false;
-                    break;
+            // 计算当前 Server 与 msg 中记录的 queue 相关度最高的 server
+            int relatedNum = 0;
+            while (iterator.hasNext()) {
+                Map.Entry<String, QueueInfo> infoEntry = iterator.next();
+                String queueName = infoEntry.getKey();
+                if (mqEntity.getQueueInfoMap().containsKey(queueName)) {
+                    relatedNum++;
                 }
             }
-
-            // 找到了对应的 Server 信息
-            if (flag) {
+            // 不断更新 netty server
+            if (relatedNum > maxRelated) {
                 for (ServerInfo curServer : AdminServerCache.curServers) {
                     if (curServer.getKid().equals(next.getKey())) {
-                        return curServer;
+                        nettyServer = curServer;
                     }
                 }
+                maxRelated = relatedNum;
+            }
+
+            if (maxRelated == mqEntity.getQueueInfoMap().size() && nettyServer != null) {
+                return nettyServer;
             }
         }
-        return null;
+
+        if (nettyServer != null) {
+            return nettyServer;
+        }
+        // 如果 server 不包含 consumer 注册的队列，那么就给定一个随机的 netty server
+        return getRandomNettyServer();
+    }
+
+    private ServerInfo getRandomNettyServer() {
+        List<ServerInfo> ans = new ArrayList<>(AdminServerCache.curServers);
+        return ans.get(new Random().nextInt(ans.size()));
     }
 
 
@@ -155,7 +168,6 @@ public class ClusterManagerController {
         if (!StringUtils.isBlank(toKid) && toKid.equals(AdminServerCache.kid)) {
             return null;
         } else {
-            log.info("receive sync all queue command, to kid : {} ", toKid);
             ServerInfo serverInfo = null;
             for (ServerInfo temp : mqConfig.getServerList()) {
                 if (temp.getKid().equals(toKid)) {
@@ -174,11 +186,12 @@ public class ClusterManagerController {
             Iterator<Map.Entry<String, QueueInfo>> iterator = fromQueueInfo.entrySet().iterator();
 
             while (iterator.hasNext()) {
+
                 Map.Entry<String, QueueInfo> infoEntry = iterator.next();
                 QueueInfo queueInfo = infoEntry.getValue();
                 // 同步对方没有的队列内容
                 if (null == toKidQueueInfo || !toKidQueueInfo.containsKey(queueInfo.getName())) {
-                    log.info("start sync [ {} ] msg ", queueInfo.getName());
+                    log.info("start sync [ {} ] msg from kid : [ {} ] to kid: [ {} ] ", queueInfo.getName(), AdminServerCache.kid, toKid);
 
                     Integer type = 0;
                     switch (queueInfo.getType()) {

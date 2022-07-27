@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
+import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.client.MQTCPClient;
 import com.krest.mq.core.config.MQNormalConfig;
 import com.krest.mq.core.entity.MQMessage;
@@ -15,6 +16,7 @@ import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.HttpUtil;
 import com.krest.mq.core.utils.IdWorker;
 import com.krest.mq.core.utils.TcpMsgSendUtils;
+import com.krest.mq.starter.cache.StaterCache;
 import com.krest.mq.starter.producer.MQProducerRunnable;
 import com.krest.mq.starter.properties.KrestMQProperties;
 import com.krest.mq.starter.uitls.ConnectUtil;
@@ -45,6 +47,18 @@ public class KrestMQTemplate {
                 = ConnectUtil.getNettyServerInfo(ConnectUtil.mqLeader, this.registerMsg);
 
         if (null != nettyServerInfo) {
+
+            // 等到 consumer 注册成功
+            while (!StaterCache.isConsumerReady) {
+                log.info("wait for consumer register ready.....");
+                try {
+                    Thread.sleep(3 * 1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+
             MQProducerRunnable runnable = new MQProducerRunnable(
                     nettyServerInfo.getAddress(), nettyServerInfo.getTcpPort(),
                     ConnectUtil.idWorker, this.tcpClient, this.registerMsg);

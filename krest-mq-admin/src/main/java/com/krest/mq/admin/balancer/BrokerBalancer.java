@@ -1,5 +1,6 @@
 package com.krest.mq.admin.balancer;
 
+import com.krest.mq.admin.util.SyncDataUtils;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.entity.ClusterInfo;
 import com.krest.mq.core.entity.MqRequest;
@@ -29,96 +30,75 @@ public class BrokerBalancer {
             // 重设副本数量最大为集群的数量
             duplicate = AdminServerCache.curServers.size();
         }
-
-        // 记录每个 queue 现有的数量
-        Map<String, Integer> kidQueueAmountMap = new HashMap<>();
-        countKidAndQueue(kidQueueAmountMap);
         // 开始同步数据
-        doSyncData(duplicate, kidQueueAmountMap);
+        doSyncData(duplicate);
 
         AdminServerCache.isKidBalanced = false;
     }
 
-    private static void doSyncData(Integer duplicate, Map<String, Integer> kidQueueAmountMap) {
-        PriorityQueue<Map.Entry<String, Integer>> sortedQueue = new PriorityQueue<>(
-                Comparator.comparingInt(Map.Entry::getValue));
-
-        // 根据 queue 的数量进行升序排序
-        Iterator<Map.Entry<String, Integer>> iterator = kidQueueAmountMap.entrySet().iterator();
-        while (iterator.hasNext()) {
-            sortedQueue.add(iterator.next());
-        }
+    private static void doSyncData(Integer duplicate) {
 
         // 开始遍历记录的 queue 数量的列表
-        Iterator<Map.Entry<String, Integer>> queueAmountIt = AdminServerCache.clusterInfo.getQueueAmountMap().entrySet().iterator();
+        Iterator<Map.Entry<String, Integer>> queueAmountIt = AdminServerCache.clusterInfo
+                .getQueueAmountMap().entrySet().iterator();
 
         while (queueAmountIt.hasNext()) {
             Map.Entry<String, Integer> entry = queueAmountIt.next();
             String queueName = entry.getKey();
             Integer count = entry.getValue();
-
             // 如果当前队列的数量小于副本数，开始复制队列
             if (count < duplicate) {
-                // 获取 to kid
-                Map.Entry<String, Integer> poll = sortedQueue.poll();
-                String toKid = poll.getKey();
 
                 // 获取 from kid
-                // 因为是节点对节点的复制，所以 from kid 上面的队列数量应该是最少的
                 String fromKid = getFromKid(queueName, AdminServerCache.clusterInfo);
                 ServerInfo fromServer = AdminServerCache.kidServerMap.get(fromKid);
+
+                String toKid = getToKid(fromKid);
 
                 // 开始发送同步数据的请求
                 String targetUrl = "http://" + fromServer.getTargetAddress() + "/mq/manager/sync/all/queue";
                 MqRequest request = new MqRequest(targetUrl, toKid);
-                HttpUtil.postRequest(request);
+                String s = HttpUtil.postRequest(request);
 
-                // 更新当前 cluster 的数据信息
-                updateEntryInfo(fromKid, toKid, entry, AdminServerCache.clusterInfo, poll);
-                sortedQueue.add(poll);
             }
+            // 更新信息
+            SyncDataUtils.syncClusterInfo();
         }
     }
 
+    /**
+     * 获取与 from kid 中 queue 相似度最高的 to kid;
+     */
+    private static String getToKid(String fromKid) {
+        ConcurrentHashMap<String, QueueInfo> fromKidQueueInfoMag = AdminServerCache.clusterInfo.getKidQueueInfo().get(fromKid);
+        String toKid = null;
+        int maxRelate = Integer.MIN_VALUE;
 
-    private static void countKidAndQueue(Map<String, Integer> kidQueueAmountMap) {
-        ConcurrentHashMap<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo
-                = AdminServerCache.clusterInfo.getKidQueueInfo();
-        Iterator<Map.Entry<String, ConcurrentHashMap<String, QueueInfo>>> kidQueueIterator
-                = kidQueueInfo.entrySet().iterator();
-        // 先找到没有任何队列的 kid
-        for (ServerInfo curServer : AdminServerCache.curServers) {
-            String kid = curServer.getKid();
-            if (!kidQueueInfo.containsKey(kid)) {
-                kidQueueAmountMap.put(kid, 0);
+
+        for (Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> curQueueInfo : AdminServerCache.clusterInfo.getKidQueueInfo().entrySet()) {
+            ConcurrentHashMap<String, QueueInfo> queueInfoMap = curQueueInfo.getValue();
+            String kid = curQueueInfo.getKey();
+
+            if (kid.equals(fromKid)) {
+                continue;
+            }
+
+            Iterator<Map.Entry<String, QueueInfo>> iterator = queueInfoMap.entrySet().iterator();
+            int cnt = 0;
+            while (iterator.hasNext()) {
+                Map.Entry<String, QueueInfo> next = iterator.next();
+                String queueName = next.getKey();
+                if (fromKidQueueInfoMag.containsKey(queueName)) {
+                    cnt++;
+                }
+            }
+            if (cnt > maxRelate) {
+                toKid = kid;
             }
         }
+        return toKid;
     }
 
-    private static void updateEntryInfo(String fromKid, String toKid,
-                                        Map.Entry<String, Integer> entry,
-                                        ClusterInfo clusterInfo,
-                                        Map.Entry<String, Integer> poll) {
-        // 获取 from kid 上面的所有队列
-        ConcurrentHashMap<String, QueueInfo> fromMap = clusterInfo.getKidQueueInfo().get(fromKid);
-        ConcurrentHashMap<String, QueueInfo> toMap = clusterInfo.getKidQueueInfo().get(toKid);
-        Iterator<Map.Entry<String, QueueInfo>> iterator = fromMap.entrySet().iterator();
-
-        if (toMap == null) {
-            toMap = new ConcurrentHashMap<>();
-        }
-
-        while (iterator.hasNext()) {
-            Map.Entry<String, QueueInfo> next = iterator.next();
-            String queueName = next.getKey();
-            if (!toMap.containsKey(queueName)) {
-                clusterInfo.getQueueAmountMap().put(queueName, entry.getValue() + 1);
-                poll.setValue(poll.getValue() + 1);
-            }
-        }
-
-        clusterInfo.getKidQueueInfo().put(toKid, toMap);
-    }
 
     /**
      * 获取包含 queue 的最少 queue amount 的 kid

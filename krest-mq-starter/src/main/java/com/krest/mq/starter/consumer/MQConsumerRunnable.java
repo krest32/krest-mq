@@ -5,6 +5,7 @@ import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.listener.ChannelListener;
 import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.IdWorker;
+import com.krest.mq.starter.cache.StaterCache;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
@@ -19,7 +20,7 @@ public class MQConsumerRunnable implements Runnable {
     MQMessage.MQEntity requestMSg;
 
     public MQConsumerRunnable(String host, int port,
-                              Object bean,  MQMessage.MQEntity requestMSg) {
+                              Object bean, MQMessage.MQEntity requestMSg) {
         this.host = host;
         this.port = port;
         this.bean = bean;
@@ -37,6 +38,4 @@ public class MQConsumerRunnable implements Runnable {
         mqConsumer.connect(new ConsumerChannelInitializer(inactiveListener, bean, this.requestMSg));
         mqConsumer.sendMsg(this.requestMSg);
     }
-
-
 }

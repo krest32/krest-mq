@@ -8,6 +8,7 @@ import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.IdWorker;
 import com.krest.mq.starter.anno.KrestConsumer;
 import com.krest.mq.starter.anno.KrestMQListener;
+import com.krest.mq.starter.cache.StaterCache;
 import com.krest.mq.starter.properties.KrestMQProperties;
 import com.krest.mq.starter.uitls.ConnectUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -68,7 +69,6 @@ public class RegisterConsumer implements BeanPostProcessor {
 
             MQMessage.MQEntity requestMsg = registerMSg(queueInfo);
 
-
             ServerInfo nettyServerInfo = ConnectUtil.getNettyServerInfo(ConnectUtil.mqLeader, requestMsg);
 
 
@@ -80,6 +80,7 @@ public class RegisterConsumer implements BeanPostProcessor {
 
             Thread thread = new Thread(runnable);
             thread.start();
+
         }
         return bean;
     }

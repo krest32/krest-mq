@@ -54,4 +54,25 @@ public class MQListener {
         }
     }
 
+    @KrestMQListener(queue = "demo3", queueType = QueueType.DELAY)
+    public void channelRead3(ChannelHandlerContext ctx, MQMessage.MQEntity response) throws Exception {
+        log.info("demo3 get msg : " + response.getMsg());
+        if (response.getIsAck()) {
+            Thread.sleep(1000);
+            ctx.writeAndFlush(MQMessage.MQEntity.newBuilder()
+                    .setId(response.getId())
+                    .setMsgType(3).build());
+        }
+    }
+//
+//    @KrestMQListener(queue = "demo4", queueType = QueueType.DELAY)
+//    public void channelRead4(ChannelHandlerContext ctx, MQMessage.MQEntity response) throws Exception {
+//        log.info("demo3 get msg : " + response.getMsg());
+//        if (response.getIsAck()) {
+//            Thread.sleep(1000);
+//            ctx.writeAndFlush(MQMessage.MQEntity.newBuilder()
+//                    .setId(response.getId())
+//                    .setMsgType(3).build());
+//        }
+//    }
 }

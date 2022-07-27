@@ -53,7 +53,6 @@ public class SearchLeaderRunnable implements Runnable {
         // 遍历所有的信息
         for (int i = 0; i < this.mqConfig.getServerList().size(); i++) {
             ServerInfo curServerInfo = this.mqConfig.getServerList().get(i);
-            AdminServerCache.kidServerMap.put(curServerInfo.getKid(), curServerInfo);
 
             // 如果当前的角色不是 观察模式 就退出
             if (!AdminServerCache.clusterRole.equals(ClusterRole.Observer)

@@ -36,6 +36,9 @@ public class MQInitialize implements InitializingBean {
         KrestFileConfig.maxFileCount = config.getMaxFileCount();
 
         for (ServerInfo serverInfo : config.getServerList()) {
+            String kid = serverInfo.getKid();
+            AdminServerCache.kidServerMap.put(kid, serverInfo);
+
             if (serverInfo.getKid().equals(config.getKid())) {
                 AdminServerCache.selfServerInfo = serverInfo;
             }
