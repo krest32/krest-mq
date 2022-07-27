@@ -1,8 +1,7 @@
 package com.krest.mq.starter.producer;
 
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.listener.ChannelListener;
-import com.krest.mq.starter.consumer.ConsumerHandlerAdapter;
+import com.krest.mq.starter.client.ChannelListener;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.handler.codec.protobuf.ProtobufDecoder;

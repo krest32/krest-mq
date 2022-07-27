@@ -1,14 +1,11 @@
 package com.krest.mq.starter.consumer;
 
-import com.krest.mq.core.client.MQTCPClient;
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.listener.ChannelListener;
-import com.krest.mq.core.utils.DateUtils;
-import com.krest.mq.core.utils.IdWorker;
-import com.krest.mq.starter.cache.StaterCache;
+import com.krest.mq.starter.client.ChannelListener;
+import com.krest.mq.starter.client.MQTCPClient;
+import com.krest.mq.starter.producer.ProducerChannelInitializer;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.*;
 
 @Slf4j
 public class MQConsumerRunnable implements Runnable {
@@ -32,10 +29,12 @@ public class MQConsumerRunnable implements Runnable {
      */
     @Override
     public void run() {
-        log.info("consumer connect server, host : {} , port : {} ", host, port);
-        MQTCPClient mqConsumer = new MQTCPClient(host, port, this.requestMSg);
-        ChannelListener inactiveListener = mqConsumer.getInactiveListener();
-        mqConsumer.connect(new ConsumerChannelInitializer(inactiveListener, bean, this.requestMSg));
+        MQTCPClient mqConsumer = new MQTCPClient(this.requestMSg);
+        mqConsumer.connect(new ConsumerChannelInitializer(
+                mqConsumer.getInactiveListener(), bean, this.requestMSg));
+
         mqConsumer.sendMsg(this.requestMSg);
+
+
     }
 }

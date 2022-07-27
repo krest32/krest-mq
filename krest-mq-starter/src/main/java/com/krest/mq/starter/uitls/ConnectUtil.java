@@ -27,7 +27,6 @@ public class ConnectUtil {
 
     // 获取 server 的基本配置信息
     public static void initSever() {
-
         // 获取得到 Leader 信息
         mqLeader = ConnectUtil.getLeaderInfo(mqConfig);
         while (mqLeader == null) {
@@ -49,7 +48,6 @@ public class ConnectUtil {
         String targetUrl = "http://" + leader.getTargetAddress() + "/mq/manager/get/netty/server/info";
         String responseStr = null;
         try {
-            System.out.println(JsonFormat.printer().print(mqEntity));
             responseStr = HttpUtil.postRequest(targetUrl, JsonFormat.printer().print(mqEntity));
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace();
@@ -76,7 +74,6 @@ public class ConnectUtil {
                 return JSONObject.parseObject(responseStr, ServerInfo.class);
             }
         }
-
         return null;
     }
 

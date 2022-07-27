@@ -26,7 +26,7 @@ public class TcpServerMsgProcessor {
 
 
     public static void msgCenter(ChannelHandlerContext ctx, MQMessage.MQEntity entity) {
-
+        System.out.println(entity);
         // 开始根据消息类型处理消息 1. 生产者  2. 消费者  3. 回复类型消息
         switch (entity.getMsgType()) {
             case 1:
@@ -70,8 +70,6 @@ public class TcpServerMsgProcessor {
     }
 
 
-
-
     /**
      * 1。consumer 是否有对应的 msg queue，如果没有就新建
      * 2. server 返回建立链接的信息
@@ -91,7 +89,6 @@ public class TcpServerMsgProcessor {
 
         MsgResolver.handleConsumerMsg(ctx, request);
     }
-
 
 
 }

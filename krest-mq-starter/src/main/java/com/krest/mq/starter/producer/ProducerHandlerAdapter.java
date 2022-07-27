@@ -1,8 +1,8 @@
 package com.krest.mq.starter.producer;
 
-import com.krest.mq.core.listener.ChannelListener;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.processor.TcpClientMsgProcessor;
+import com.krest.mq.starter.client.ChannelListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.extern.slf4j.Slf4j;

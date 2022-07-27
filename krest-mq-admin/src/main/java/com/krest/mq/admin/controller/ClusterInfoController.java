@@ -17,8 +17,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 
 @Slf4j
@@ -41,6 +43,14 @@ public class ClusterInfoController {
         return SyncDataUtils.mqConfig.toString();
     }
 
+    @GetMapping("cur/servers")
+    public CopyOnWriteArraySet<ServerInfo> getCurServices() {
+        if (AdminServerCache.clusterInfo.equals(ClusterRole.Leader)) {
+            return AdminServerCache.curServers;
+        }
+        return null;
+    }
+
     /**
      * 获取 cluster 中的 server 角色
      */
@@ -54,6 +64,7 @@ public class ClusterInfoController {
      */
     @GetMapping("cluster/info")
     public ClusterInfo getClusterInfo() {
+        SyncDataUtils.syncClusterInfo();
         return AdminServerCache.clusterInfo;
     }
 
@@ -68,96 +79,19 @@ public class ClusterInfoController {
 
 
     /**
-     * 向 leader 中注册 follower，
-     * 然后清空自身之前存在的数据信息，以便更好的接入集群中
-     * todo 逻辑存在漏洞，待修改
+     * 向 leader 中注册 follower
      */
     @PostMapping("register")
-    public ServerInfo register(@RequestBody ServerInfo serverInfo) throws InterruptedException {
+    public ServerInfo register(@RequestBody ServerInfo serverInfo)  {
         // 如果正在选择 Leader, 那么就进入等到状态
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
             log.info("receive new service register : " + serverInfo);
             // 添加当前 leader的服务中
             AdminServerCache.curServers.add(serverInfo);
-            // 同步集群的 queue 信息
-            SyncDataUtils.syncClusterInfo();
-            // 进行检查， 判断新注册的节点上的队列是否在集群中存在，只要存在一条就全部删除
-            if (checkBrokerQueueInfo(serverInfo)) {
-                // 清空原始数据
-                clearHisData(serverInfo);
-                // 同步集群的 queue 信息
-                SyncDataUtils.syncClusterInfo();
-            }
-            // 进行负载均很
-            BrokerBalancer.run();
-            // 同步集群的 queue 信息
-            SyncDataUtils.syncClusterInfo();
-            // 返回 Leader 的信息
             return AdminServerCache.leaderInfo;
         }
         // 返回一个空对象
         return null;
-    }
-
-    /**
-     * 检查注册进来的 broker 是否要清除数据
-     * 1. 新注册的 broker 的 queue 当前集群没有的 false
-     * 2. 新注册的 broke 的 queue 是当前集群存在的
-     */
-    private boolean checkBrokerQueueInfo(ServerInfo serverInfo) {
-        String targetUrl = "http://" + serverInfo.getTargetAddress() + checkBrokerQueueInfoPath;
-        MqRequest request = new MqRequest(targetUrl, null);
-
-        ConcurrentHashMap<String, JSONObject> queueInfoStrMap = HttpUtil.getQueueInfo(request);
-        if (null != queueInfoStrMap) {
-            // 更新 queue 的最新 offset
-            Iterator<Map.Entry<String, JSONObject>> iterator = queueInfoStrMap.entrySet().iterator();
-
-            while (iterator.hasNext()) {
-                Map.Entry<String, JSONObject> mapEntry = iterator.next();
-                QueueInfo tempQueueInfo = mapEntry.getValue().toJavaObject(QueueInfo.class);
-
-                String queueName = tempQueueInfo.getName();
-                // 判断值是否存在，不存在给定默认值
-                Long tempOffset = Long.valueOf(tempQueueInfo.getOffset() == null
-                        ? "-1L" : tempQueueInfo.getOffset());
-                Integer tempSize = tempQueueInfo.getAmount() == null
-                        ? -1 : tempQueueInfo.getAmount();
-
-                // 检查 offset 和 amount, 如果 offset 和 amount 有一处不一致，那么就删除
-                Long offset = Long.valueOf(AdminServerCache.clusterInfo.getQueueOffsetMap().get(queueName) == null
-                        ? -1 : AdminServerCache.clusterInfo.getQueueOffsetMap().get(queueName));
-                Integer size = AdminServerCache.clusterInfo.getQueueSizeMap().get(queueName) == null
-                        ? -1 : AdminServerCache.clusterInfo.getQueueSizeMap().get(queueName);
-
-                // 如果 集群的偏移量 大于 新注册的 broker, 说明 broker 的数据是旧的， 执行删除
-                if (offset.compareTo(tempOffset) > 0) {
-                    System.out.println(1);
-                    return true;
-                }
-                // 如果 偏移量相同，但是新注册的 broker queue size 大于 cluster 中的 queue size，
-                // 那就说明 新的 broker 数据更新
-                if (offset.compareTo(tempOffset) == 0 && size > tempSize) {
-                    System.out.println(3);
-                    return true;
-                }
-
-                // 判断 queue 在 cluster 中数量是否超过了 最大副本数
-                Integer amount = AdminServerCache.clusterInfo.getQueueAmountMap()
-                        .getOrDefault(queueName, 0);
-                if (amount > AdminServerCache.clusterInfo.getDuplicate()) {
-                    System.out.println(3);
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private void clearHisData(ServerInfo serverInfo) {
-        String targetUrl = "http:\\" + serverInfo.getTargetAddress() + clearHisDataPath;
-        MqRequest request = new MqRequest(targetUrl, null);
-        HttpUtil.postRequest(request);
     }
 
     /**

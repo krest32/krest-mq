@@ -53,6 +53,7 @@ public class ScheduleJob {
                     }
                     log.info("follower disconnected! : " + curServer);
                     AdminServerCache.curServers.remove(curServer);
+                    SyncDataUtils.syncClusterInfo();
                 }
             }
         }

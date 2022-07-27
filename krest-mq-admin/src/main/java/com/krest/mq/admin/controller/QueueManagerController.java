@@ -22,7 +22,6 @@ import java.util.concurrent.DelayQueue;
 @RequestMapping("queue/manager")
 public class QueueManagerController {
 
-
     /**
      * 获取普通队列中数据的情况
      */

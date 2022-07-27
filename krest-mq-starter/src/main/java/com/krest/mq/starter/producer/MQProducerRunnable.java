@@ -1,10 +1,10 @@
 package com.krest.mq.starter.producer;
 
-import com.krest.mq.core.client.MQTCPClient;
-import com.krest.mq.core.config.MQNormalConfig;
+
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.utils.DateUtils;
+
 import com.krest.mq.core.utils.IdWorker;
+import com.krest.mq.starter.client.MQTCPClient;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.Callable;
@@ -30,7 +30,7 @@ public class MQProducerRunnable implements Callable {
 
     @Override
     public Object call() throws Exception {
-        this.mqtcpClient = new MQTCPClient(this.host, this.port, this.mqEntity);
+        this.mqtcpClient = new MQTCPClient(this.mqEntity);
         this.mqtcpClient.connect(new ProducerChannelInitializer(
                 this.mqtcpClient.getInactiveListener(), this.mqEntity));
         log.info("producer connect server, host : {} , port : {} ", this.host, this.port);

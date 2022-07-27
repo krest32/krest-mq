@@ -1,33 +1,23 @@
 package com.krest.mq.starter.template;
 
-import com.alibaba.fastjson.JSONObject;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.util.JsonFormat;
-import com.krest.mq.core.cache.AdminServerCache;
-import com.krest.mq.core.client.MQTCPClient;
+
+
 import com.krest.mq.core.config.MQNormalConfig;
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.entity.MqRequest;
 import com.krest.mq.core.entity.ServerInfo;
 import com.krest.mq.core.enums.TransferType;
 import com.krest.mq.core.utils.DateUtils;
-import com.krest.mq.core.utils.HttpUtil;
-import com.krest.mq.core.utils.IdWorker;
 import com.krest.mq.core.utils.TcpMsgSendUtils;
 import com.krest.mq.starter.cache.StaterCache;
+import com.krest.mq.starter.client.MQTCPClient;
 import com.krest.mq.starter.producer.MQProducerRunnable;
-import com.krest.mq.starter.properties.KrestMQProperties;
 import com.krest.mq.starter.uitls.ConnectUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import sun.nio.cs.ext.MacArabic;
+
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
@@ -47,7 +37,6 @@ public class KrestMQTemplate {
                 = ConnectUtil.getNettyServerInfo(ConnectUtil.mqLeader, this.registerMsg);
 
         if (null != nettyServerInfo) {
-
             // 等到 consumer 注册成功
             while (!StaterCache.isConsumerReady) {
                 log.info("wait for consumer register ready.....");
@@ -57,7 +46,6 @@ public class KrestMQTemplate {
                     e.printStackTrace();
                 }
             }
-
 
             MQProducerRunnable runnable = new MQProducerRunnable(
                     nettyServerInfo.getAddress(), nettyServerInfo.getTcpPort(),

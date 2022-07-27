@@ -5,6 +5,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.krest.file.util.FileWriterUtils;
 import com.krest.mq.admin.properties.MqConfig;
+import com.krest.mq.admin.schedule.ScheduleJob;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.entity.*;
@@ -35,6 +36,9 @@ public class ClusterManagerController {
 
     @Autowired
     MqConfig mqConfig;
+
+    @Autowired
+    ScheduleJob scheduleJob;
 
     /**
      * 获取当前 server 的 leader 信息
@@ -81,6 +85,7 @@ public class ClusterManagerController {
      */
     @PostMapping("get/netty/server/info")
     public ServerInfo getServerInfo(@RequestBody String reqStr) throws InvalidProtocolBufferException {
+        scheduleJob.detectFollower();
         MQMessage.MQEntity.Builder tempBuilder = MQMessage.MQEntity.newBuilder();
         JsonFormat.parser().merge(reqStr, tempBuilder);
         MQMessage.MQEntity mqEntity = tempBuilder.build();
@@ -176,58 +181,61 @@ public class ClusterManagerController {
                 }
             }
 
-            String targetHost = serverInfo.getAddress();
-            Integer port = serverInfo.getUdpPort();
+            if (null != serverInfo) {
 
-            // 找到需要同步的队列信息
-            ConcurrentHashMap<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = AdminServerCache.clusterInfo.getKidQueueInfo();
-            ConcurrentHashMap<String, QueueInfo> toKidQueueInfo = kidQueueInfo.get(toKid);
-            ConcurrentHashMap<String, QueueInfo> fromQueueInfo = kidQueueInfo.get(AdminServerCache.kid);
-            Iterator<Map.Entry<String, QueueInfo>> iterator = fromQueueInfo.entrySet().iterator();
+                String targetHost = serverInfo.getAddress();
+                Integer port = serverInfo.getUdpPort();
 
-            while (iterator.hasNext()) {
+                // 找到需要同步的队列信息
+                ConcurrentHashMap<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = AdminServerCache.clusterInfo.getKidQueueInfo();
+                ConcurrentHashMap<String, QueueInfo> toKidQueueInfo = kidQueueInfo.get(toKid);
+                ConcurrentHashMap<String, QueueInfo> fromQueueInfo = kidQueueInfo.get(AdminServerCache.kid);
+                Iterator<Map.Entry<String, QueueInfo>> iterator = fromQueueInfo.entrySet().iterator();
 
-                Map.Entry<String, QueueInfo> infoEntry = iterator.next();
-                QueueInfo queueInfo = infoEntry.getValue();
-                // 同步对方没有的队列内容
-                if (null == toKidQueueInfo || !toKidQueueInfo.containsKey(queueInfo.getName())) {
-                    log.info("start sync [ {} ] msg from kid : [ {} ] to kid: [ {} ] ", queueInfo.getName(), AdminServerCache.kid, toKid);
+                while (iterator.hasNext()) {
 
-                    Integer type = 0;
-                    switch (queueInfo.getType()) {
-                        case PERMANENT:
-                            type = 1;
-                            break;
-                        case TEMPORARY:
-                            type = 2;
-                            break;
-                        case DELAY:
-                            type = 3;
-                            break;
-                    }
+                    Map.Entry<String, QueueInfo> infoEntry = iterator.next();
+                    QueueInfo queueInfo = infoEntry.getValue();
+                    // 同步对方没有的队列内容
+                    if (null == toKidQueueInfo || !toKidQueueInfo.containsKey(queueInfo.getName())) {
+                        log.info("start sync [ {} ] msg from kid : [ {} ] to kid: [ {} ] ", queueInfo.getName(), AdminServerCache.kid, toKid);
 
-                    MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
-                            .setId(String.valueOf(AdminServerCache.clusterInfo.getQueueOffsetMap()
-                                    .get(queueInfo.getName())))
-                            .setDateTime(DateUtils.getNowDate())
-                            .setMsgType(2)
-                            .setIsAck(true)
-                            .putQueueInfo(queueInfo.getName(), type)
-                            .build();
-                    AdminServerCache.mqudpServer.sendMsg(targetHost, port, mqEntity);
-                    // 开始同步信息
-                    if (queueInfo.getType().equals(QueueType.DELAY)) {
-                        // 取出延时队列的信息
-                        DelayQueue<DelayMessage> delayMessages = copyDelayQueue(queueInfo.getName());
-                        while (null != delayMessages && !delayMessages.isEmpty()) {
-                            AdminServerCache.mqudpServer.sendMsg(targetHost, port,
-                                    delayMessages.poll().getMqEntity());
+                        Integer type = 0;
+                        switch (queueInfo.getType()) {
+                            case PERMANENT:
+                                type = 1;
+                                break;
+                            case TEMPORARY:
+                                type = 2;
+                                break;
+                            case DELAY:
+                                type = 3;
+                                break;
                         }
-                    } else {
-                        BlockingDeque<MQMessage.MQEntity> blockingDeque = copyNormalQueue(queueInfo.getName());
 
-                        while (null != blockingDeque && !blockingDeque.isEmpty()) {
-                            AdminServerCache.mqudpServer.sendMsg(targetHost, port, blockingDeque.poll());
+                        MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
+                                .setId(String.valueOf(AdminServerCache.clusterInfo.getQueueOffsetMap()
+                                        .get(queueInfo.getName())))
+                                .setDateTime(DateUtils.getNowDate())
+                                .setMsgType(2)
+                                .setIsAck(true)
+                                .putQueueInfo(queueInfo.getName(), type)
+                                .build();
+                        AdminServerCache.mqudpServer.sendMsg(targetHost, port, mqEntity);
+                        // 开始同步信息
+                        if (queueInfo.getType().equals(QueueType.DELAY)) {
+                            // 取出延时队列的信息
+                            DelayQueue<DelayMessage> delayMessages = copyDelayQueue(queueInfo.getName());
+                            while (null != delayMessages && !delayMessages.isEmpty()) {
+                                AdminServerCache.mqudpServer.sendMsg(targetHost, port,
+                                        delayMessages.poll().getMqEntity());
+                            }
+                        } else {
+                            BlockingDeque<MQMessage.MQEntity> blockingDeque = copyNormalQueue(queueInfo.getName());
+
+                            while (null != blockingDeque && !blockingDeque.isEmpty()) {
+                                AdminServerCache.mqudpServer.sendMsg(targetHost, port, blockingDeque.poll());
+                            }
                         }
                     }
                 }
