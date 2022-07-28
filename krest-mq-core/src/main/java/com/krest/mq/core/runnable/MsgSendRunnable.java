@@ -34,6 +34,7 @@ public class MsgSendRunnable implements Runnable {
                     if (sendMsg(mqEntity, channels)) {
                         // 更新本地的缓存的偏移量
                         SyncUtil.saveQueueInfoMap(queueName, mqEntity.getId());
+                        SyncUtil.msgReleaseToOtherSever(queueName, mqEntity);
                     } else {
                         BrokerLocalCache.queueMap.get(queueName).putFirst(mqEntity);
                     }
@@ -42,7 +43,7 @@ public class MsgSendRunnable implements Runnable {
                     BrokerLocalCache.queueMap.get(queueName).putFirst(mqEntity);
                     Thread.sleep(15 * 1000);
                 }
-            } catch (InterruptedException | ExecutionException e) {
+            } catch (InterruptedException e) {
                 log.error(e.getMessage(), e);
                 // 如果在去除消息后发生了异常，仍然需要吧消息返回队列
                 if (null != mqEntity) {
@@ -52,14 +53,12 @@ public class MsgSendRunnable implements Runnable {
                         log.error(e.getMessage(), e);
                     }
                 }
-            } catch (TimeoutException e) {
-                log.error(e.getMessage(), e);
             }
         }
     }
 
 
-    private boolean sendMsg(MQMessage.MQEntity mqEntity, List<Channel> channels) throws ExecutionException, InterruptedException, TimeoutException {
+    private boolean sendMsg(MQMessage.MQEntity mqEntity, List<Channel> channels) {
         boolean flag = true;
         // 如果是单点发送
         if (mqEntity.getTransferType() == 1) {

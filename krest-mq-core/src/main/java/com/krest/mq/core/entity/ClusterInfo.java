@@ -2,12 +2,14 @@ package com.krest.mq.core.entity;
 
 import lombok.Data;
 
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Data
 public class ClusterInfo {
     // 集群中每个 queue 的副本数量
     Integer duplicate;
+
     // 激励每个 queue 对应的大小
     ConcurrentHashMap<String, Integer> queueSizeMap = new ConcurrentHashMap<>();
     // 记录每个 queue 对应的最新的数据的 kid
@@ -18,5 +20,6 @@ public class ClusterInfo {
     ConcurrentHashMap<String, Integer> queueAmountMap = new ConcurrentHashMap<>();
     // 每个 kid 对应的 queue info map
     ConcurrentHashMap<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = new ConcurrentHashMap<>();
-
+    // 每个 queue 对应的 pocket 信息
+    ConcurrentHashMap<String, Set<ServerInfo>> queuePacketMap = new ConcurrentHashMap<>();
 }

@@ -12,8 +12,10 @@ import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.core.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -63,6 +65,7 @@ public class SyncDataUtils {
         clusterInfo.getQueueOffsetMap().clear();
         clusterInfo.getQueueSizeMap().clear();
         clusterInfo.getKidQueueInfo().clear();
+        clusterInfo.getQueuePacketMap().clear();
 
         for (ServerInfo curServer : AdminServerCache.curServers) {
             // 获取 queue info Map
@@ -86,6 +89,10 @@ public class SyncDataUtils {
                     setQueueOffsetAndSize(clusterInfo, curServer, tempQueueInfo, queueName);
                     // 设置 queue info map
                     queueInfoMap.put(queueName, tempQueueInfo);
+                    // 设置 queue server 信息
+                    Set<ServerInfo> serverSet = clusterInfo.getQueuePacketMap().getOrDefault(queueName, new HashSet<>());
+                    serverSet.add(curServer);
+                    clusterInfo.getQueuePacketMap().put(queueName,serverSet);
                 }
                 clusterInfo.getKidQueueInfo().put(curServer.getKid(), queueInfoMap);
             } else {

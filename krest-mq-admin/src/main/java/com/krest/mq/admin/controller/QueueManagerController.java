@@ -1,23 +1,27 @@
 package com.krest.mq.admin.controller;
 
+import com.alibaba.fastjson.JSONObject;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.ProtocolStringList;
+import com.google.protobuf.util.JsonFormat;
 import com.krest.mq.admin.util.SyncDataUtils;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.BrokerLocalCache;
-import com.krest.mq.core.entity.DelayMessage;
-import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.entity.QueueInfo;
+import com.krest.mq.core.entity.*;
 import com.krest.mq.core.enums.QueueType;
+import com.krest.mq.core.utils.SyncUtil;
+import lombok.extern.log4j.Log4j;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.DelayQueue;
 
+
+@Slf4j
 @RestController
 @RequestMapping("queue/manager")
 public class QueueManagerController {
@@ -87,5 +91,29 @@ public class QueueManagerController {
     @GetMapping("sync/data")
     public void syncQueueData() {
         SyncDataUtils.syncClusterInfo();
+    }
+
+
+    /**
+     * 客户端(消费者)请求得到 netty 的远程地址
+     */
+    @PostMapping("release/msg")
+    public void getServerInfo(@RequestBody String reqStr) throws InvalidProtocolBufferException {
+        SyncInfo syncInfo = JSONObject.parseObject(reqStr, SyncInfo.class);
+        String mqEntityStr = syncInfo.getMqEntityStr();
+        MQMessage.MQEntity.Builder tempBuilder = MQMessage.MQEntity.newBuilder();
+        JsonFormat.parser().merge(mqEntityStr, tempBuilder);
+        MQMessage.MQEntity mqEntity = tempBuilder.build();
+
+        BlockingDeque<MQMessage.MQEntity> normalQueue = BrokerLocalCache.queueMap.get(syncInfo.getQueueName());
+        if (normalQueue != null) {
+            normalQueue.remove(mqEntity);
+            SyncUtil.saveQueueInfoMap(syncInfo.getQueueName(), mqEntity.getId());
+        }
+        DelayQueue<DelayMessage> delayMessages = BrokerLocalCache.delayQueueMap.get(syncInfo.getQueueName());
+        if (delayMessages != null) {
+            delayMessages.remove(mqEntity);
+            SyncUtil.saveQueueInfoMap(syncInfo.getQueueName(), mqEntity.getId());
+        }
     }
 }

@@ -10,6 +10,7 @@ import com.krest.mq.core.exeutor.LocalExecutor;
 import com.krest.mq.core.runnable.*;
 import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.MsgResolver;
+import com.krest.mq.core.utils.SyncUtil;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import lombok.extern.slf4j.Slf4j;
@@ -66,7 +67,11 @@ public class TcpServerMsgProcessor {
             ctx.writeAndFlush(response);
         }
 
+        // 将消息放入到队列中
         MsgResolver.handlerProducerMsg(mqEntity);
+
+        // 将消息同步给其他的队列
+        SyncUtil.msgToOtherServer(mqEntity);
     }
 
 

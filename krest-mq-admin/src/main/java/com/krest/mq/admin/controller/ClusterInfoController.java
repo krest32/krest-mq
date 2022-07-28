@@ -28,8 +28,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 @RequestMapping("mq/server")
 public class ClusterInfoController {
 
-    String clearHisDataPath = "/mq/manager/clear/overdue/data";
-    String checkBrokerQueueInfoPath = "/queue/manager/get/base/queue/info";
 
 
     @Autowired

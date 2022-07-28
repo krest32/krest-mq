@@ -147,7 +147,7 @@ public class MQTCPServer {
                     tempBuilder);
             MQMessage.MQEntity mqEntity = tempBuilder.build();
             if (Long.valueOf(queueInfo.getOffset())
-                    .compareTo(Long.valueOf(mqEntity.getId())) < 0) {
+                    .compareTo(Long.valueOf(mqEntity.getId())) <= 0) {
                 curBlockQueue.offer(mqEntity);
             }
         }
@@ -175,7 +175,7 @@ public class MQTCPServer {
                     tempBuilder);
             MQMessage.MQEntity mqEntity = tempBuilder.build();
             if (Long.valueOf(queueInfo.getOffset())
-                    .compareTo(Long.valueOf(mqEntity.getId())) < 0) {
+                    .compareTo(Long.valueOf(mqEntity.getId())) <= 0) {
                 DelayMessage delayMessage = new DelayMessage(mqEntity.getTimeout(), mqEntity);
                 curBlockQueue.offer(delayMessage);
             }

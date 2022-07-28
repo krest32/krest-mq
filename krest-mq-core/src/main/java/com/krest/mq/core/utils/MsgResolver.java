@@ -74,7 +74,6 @@ public class MsgResolver {
                     if (MQNormalConfig.defaultAckQueue.equals(queueName)) {
                         continue;
                     } else {
-                        ////////////////////////
                         try {
                             QueueInfo queueInfo = BrokerLocalCache.queueInfoMap.get(queueName);
                             // 只有是持久化的队列才会持久化信息
@@ -84,7 +83,6 @@ public class MsgResolver {
                                 if (queueInfo.getType().equals(QueueType.TEMPORARY)) {
                                     BrokerLocalCache.queueMap.get(queueName).put(mqEntity);
                                 } else {
-
                                     String print = JsonFormat.printer().print(mqEntity);
                                     KrestFileHandler.saveData(CacheFileConfig.queueCacheDatePath + queueName,
                                             mqEntity.getId(),
@@ -105,8 +103,6 @@ public class MsgResolver {
                         } catch (InterruptedException e) {
                             log.error(e.getMessage());
                         }
-                        ///////////////////////
-                        // LocalExecutor.TcpExecutor.execute(new MsgPutRunnable(queueName, mqEntity));
                     }
                 }
             }

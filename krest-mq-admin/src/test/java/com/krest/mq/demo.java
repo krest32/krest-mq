@@ -9,13 +9,16 @@ import java.util.concurrent.LinkedBlockingDeque;
 
 public class demo {
 
-    public static void main(String[] args)  {
-        Map<String,Integer> map = new HashMap<>();
-        Iterator<Map.Entry<String, Integer>> iterator = map.entrySet().iterator();
-        while (iterator.hasNext()){
-            System.out.println("haha");
-            System.out.println(iterator);
-        }
+    public static void main(String[] args) throws InterruptedException {
+        BlockingDeque<Integer> blockingDeque = new LinkedBlockingDeque<>();
+        blockingDeque.put(1);
+        blockingDeque.put(2);
+        blockingDeque.put(3);
+        blockingDeque.put(4);
 
+        System.out.println(blockingDeque);
+
+        blockingDeque.remove(2);
+        System.out.println(blockingDeque);
     }
 }
