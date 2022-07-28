@@ -1,7 +1,7 @@
 package com.krest.mq.core.handler;
 
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.listener.ChannelListener;
+import com.krest.mq.core.client.ChannelListener;
 import com.krest.mq.core.utils.MsgResolver;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;

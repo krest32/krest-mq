@@ -2,7 +2,6 @@ package com.krest.mq.core.client;
 
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.utils.MQUtils;
-import com.krest.mq.core.listener.ChannelListener;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInboundHandlerAdapter;
