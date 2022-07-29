@@ -25,7 +25,9 @@ public class MqAdminServer {
 
         if (SyncDataUtils.mqConfig != null) {
             // 等到服务启动，开始 查找 leader
-            LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(SyncDataUtils.mqConfig));
+            LocalExecutor.NormalUseExecutor.execute(
+                    new SearchLeaderRunnable(SyncDataUtils.mqConfig)
+            );
         }
     }
 }

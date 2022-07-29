@@ -18,9 +18,4 @@ public class TcpRespFutureHandler {
     public void register(String id, MQRespFuture respFuture) {
         BrokerLocalCache.respFutureMap.put(id, respFuture);
     }
-
-    // 将最终的结果放入到队列当中
-    public void addResponse(MQMessage.MQEntity mqEntity) {
-        BrokerLocalCache.responseQueue.add(mqEntity);
-    }
 }

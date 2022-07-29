@@ -39,7 +39,7 @@ public class MsgResolver {
      * 解析 packet 中的信息
      */
     public static MQMessage.MQEntity parseUdpDatagramPacket(DatagramPacket packet) {
-        ByteBuf buf = packet.copy().content();
+        ByteBuf buf = packet.content();
         byte[] req = new byte[buf.readableBytes()];
         buf.readBytes(req);
         MQMessage.MQEntity mqEntity = null;
@@ -83,19 +83,18 @@ public class MsgResolver {
                                 if (queueInfo.getType().equals(QueueType.TEMPORARY)) {
                                     BrokerLocalCache.queueMap.get(queueName).put(mqEntity);
                                 } else {
+
                                     String print = JsonFormat.printer().print(mqEntity);
                                     KrestFileHandler.saveData(CacheFileConfig.queueCacheDatePath + queueName,
                                             mqEntity.getId(),
                                             JSONObject.toJSONString(print));
+
                                     if (queueInfo.getType().equals(QueueType.DELAY)) {
                                         BrokerLocalCache.delayQueueMap.get(queueName).put(
                                                 new DelayMessage(mqEntity.getTimeout(), mqEntity));
                                     } else {
                                         BrokerLocalCache.queueMap.get(queueName).put(mqEntity);
                                     }
-                                    // 更新本地的缓存的偏移量
-                                    String offset = BrokerLocalCache.queueInfoMap.get(queueName).getOffset();
-                                    SyncUtil.saveQueueInfoMap(queueName, offset);
                                 }
                             }
                         } catch (InvalidProtocolBufferException e) {
@@ -114,6 +113,7 @@ public class MsgResolver {
         Map<String, Integer> queueInfoMap = request.getQueueInfoMap();
         Iterator<Map.Entry<String, Integer>> iterator = queueInfoMap.entrySet().iterator();
         List<String> queueNameList = new ArrayList<>();
+
         while (iterator.hasNext()) {
             Map.Entry<String, Integer> queueInfo = iterator.next();
             String queueName = queueInfo.getKey();

@@ -39,7 +39,6 @@ public class MsgDelaySendRunnable implements Runnable {
                     if (sendMsg(delayMessage.getMqEntity(), channels)) {
                         // 更新本地的缓存的偏移量
                         BrokerLocalCache.queueInfoMap.get(queueName).setOffset(delayMessage.getMqEntity().getId());
-                        BrokerLocalCache.queueInfoMap.get(queueName).setAmount(BrokerLocalCache.delayQueueMap.get(queueName).size());
                         KrestFileHandler.saveObject(CacheFileConfig.queueInfoFilePath, BrokerLocalCache.queueInfoMap);
                     } else {
                         BrokerLocalCache.delayQueueMap.get(queueName).put(delayMessage);

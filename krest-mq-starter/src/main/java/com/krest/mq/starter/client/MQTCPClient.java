@@ -49,11 +49,18 @@ public class MQTCPClient {
             channel = null;
             do {
                 ConnectUtil.mqLeader = ConnectUtil.getLeaderInfo(ConnectUtil.mqConfig);
-                ServerInfo serverInfo = ConnectUtil.getNettyServerInfo(ConnectUtil.mqLeader, mqEntity);
-                while (ConnectUtil.mqLeader == null || serverInfo == null) {
-                    log.info("wait 3s to get mq leader and netty server info");
-                    Thread.sleep(3 * 1000);
+
+                while (ConnectUtil.mqLeader == null) {
+                    log.info("wait 3s to get mq server");
                     ConnectUtil.mqLeader = ConnectUtil.getLeaderInfo(ConnectUtil.mqConfig);
+                }
+                ServerInfo serverInfo = ConnectUtil.getNettyServerInfo(ConnectUtil.mqLeader, mqEntity);
+                while (serverInfo == null) {
+                    while (ConnectUtil.mqLeader == null) {
+                        log.info("wait 3s to get mq server");
+                        ConnectUtil.mqLeader = ConnectUtil.getLeaderInfo(ConnectUtil.mqConfig);
+                    }
+                    log.info("wait 3s to get netty server");
                     serverInfo = ConnectUtil.getNettyServerInfo(ConnectUtil.mqLeader, mqEntity);
                 }
                 channel = MQUtils.tryConnect(bootstrap, serverInfo.getAddress(), serverInfo.getTcpPort());

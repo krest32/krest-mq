@@ -17,10 +17,11 @@ public class MQListener {
 
     @KrestMQListener(queue = "demo", queueType = QueueType.PERMANENT)
     public void channelRead(ChannelHandlerContext ctx, MQMessage.MQEntity response) throws Exception {
-        log.info("demo get msg : " + response.getMsg());
+//        log.info("demo get msg : " + response.getMsg());
         // 如果是 Ack 模式, 则返回一个 确认的 id 信息
+        log.info(response.getId());
         if (response.getIsAck()) {
-            Thread.sleep(1000);
+//            Thread.sleep(1000);
             ctx.writeAndFlush(MQMessage.MQEntity.newBuilder()
                     .setId(response.getId())
                     .setMsgType(3)
@@ -31,14 +32,15 @@ public class MQListener {
     @KrestMQListener(queue = "demo1", queueType = QueueType.TEMPORARY)
     public void channelRead1(ChannelHandlerContext ctx, MQMessage.MQEntity response) throws Exception {
 //        log.info("demo1 get msg : " + response.getMsg());
+
         if (response.getIsAck()) {
-            Thread.sleep(1000);
+//            Thread.sleep(1000);
             ctx.writeAndFlush(MQMessage.MQEntity.newBuilder()
                     .setId(response.getId())
                     .setMsgType(3).build());
         }
         cnt++;
-        if (cnt==99_999){
+        if (cnt==9_999){
             System.out.println(cnt);
         }
     }
@@ -47,7 +49,7 @@ public class MQListener {
     public void channelRead2(ChannelHandlerContext ctx, MQMessage.MQEntity response) throws Exception {
         log.info("demo2 get msg : " + response.getMsg());
         if (response.getIsAck()) {
-            Thread.sleep(1000);
+//            Thread.sleep(1000);
             ctx.writeAndFlush(MQMessage.MQEntity.newBuilder()
                     .setId(response.getId())
                     .setMsgType(3).build());
@@ -58,7 +60,7 @@ public class MQListener {
     public void channelRead3(ChannelHandlerContext ctx, MQMessage.MQEntity response) throws Exception {
         log.info("demo3 get msg : " + response.getMsg());
         if (response.getIsAck()) {
-            Thread.sleep(1000);
+//            Thread.sleep(1000);
             ctx.writeAndFlush(MQMessage.MQEntity.newBuilder()
                     .setId(response.getId())
                     .setMsgType(3).build());

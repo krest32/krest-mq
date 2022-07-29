@@ -1,11 +1,11 @@
 package com.krest.mq.starter.template;
 
 
-
 import com.krest.mq.core.config.MQNormalConfig;
 import com.krest.mq.core.entity.MQMessage;
 import com.krest.mq.core.entity.ServerInfo;
 import com.krest.mq.core.enums.TransferType;
+import com.krest.mq.core.exeutor.LocalExecutor;
 import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.TcpMsgSendUtils;
 import com.krest.mq.starter.cache.StaterCache;
@@ -18,7 +18,9 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
 @Slf4j
@@ -74,7 +76,6 @@ public class KrestMQTemplate {
         for (String queue : queues) {
             map.put(queue, 1);
         }
-
         return builder.setId(String.valueOf(ConnectUtil.idWorker.nextId()))
                 .setIsAck(true)
                 .setMsgType(1)
@@ -123,7 +124,7 @@ public class KrestMQTemplate {
                 .setDateTime(DateUtils.getNowDate())
                 .build();
         if (isAck) {
-            return TcpMsgSendUtils.ackSendMode(this.tcpClient.channel, mqEntity);
+            return TcpMsgSendUtils.ackSendMode(tcpClient.channel, mqEntity);
         } else {
             return TcpMsgSendUtils.normalSendMode(this.tcpClient.channel, mqEntity);
         }

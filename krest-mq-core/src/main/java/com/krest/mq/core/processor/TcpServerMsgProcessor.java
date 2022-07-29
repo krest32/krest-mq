@@ -1,6 +1,7 @@
 package com.krest.mq.core.processor;
 
 import com.google.protobuf.ProtocolStringList;
+import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.config.MQNormalConfig;
 import com.krest.mq.core.entity.MQMessage;
@@ -27,7 +28,6 @@ public class TcpServerMsgProcessor {
 
 
     public static void msgCenter(ChannelHandlerContext ctx, MQMessage.MQEntity entity) {
-        System.out.println(entity);
         // 开始根据消息类型处理消息 1. 生产者  2. 消费者  3. 回复类型消息
         switch (entity.getMsgType()) {
             case 1:
@@ -57,6 +57,16 @@ public class TcpServerMsgProcessor {
      * 3. 获取对应消费者的ctx，然后推送消息，但是需要判断ctx是否存活状态
      */
     private static void producer(ChannelHandlerContext ctx, MQMessage.MQEntity mqEntity) {
+
+        // 将消息放入到队列中
+        MsgResolver.handlerProducerMsg(mqEntity);
+
+        // 将消息同步给其他的队列
+        if (null != AdminServerCache.clusterInfo.getCurServers()
+                && AdminServerCache.clusterInfo.getCurServers().size() > 1) {
+            SyncUtil.msgToOtherServer(mqEntity);
+        }
+
         // 判断是否需要回复消息
         if (mqEntity.getIsAck()) {
             MQMessage.MQEntity response = MQMessage.MQEntity.newBuilder()
@@ -66,12 +76,6 @@ public class TcpServerMsgProcessor {
                     .build();
             ctx.writeAndFlush(response);
         }
-
-        // 将消息放入到队列中
-        MsgResolver.handlerProducerMsg(mqEntity);
-
-        // 将消息同步给其他的队列
-        SyncUtil.msgToOtherServer(mqEntity);
     }
 
 

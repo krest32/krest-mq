@@ -30,7 +30,7 @@ public class SyncUtil {
     }
 
     /**
-     * 发送消息到 其他 server
+     * 通过 udp 的方式，发送消息到 其他 server
      */
     public static void msgToOtherServer(MQMessage.MQEntity mqEntity) {
         ProtocolStringList queueList = mqEntity.getQueueList();

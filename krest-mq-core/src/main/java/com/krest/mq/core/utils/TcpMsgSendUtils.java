@@ -27,7 +27,7 @@ public class TcpMsgSendUtils {
     }
 
     /**
-     * ack机制： 发送失败后，会进行重试
+     * ack机制： 发送失败后，会进行重试，但问题是它会阻塞在这里，造成性能瓶颈
      */
     public static boolean ackSendMode(Channel channel, MQMessage.MQEntity mqEntity) {
         int tryCnt = 0;
@@ -42,11 +42,8 @@ public class TcpMsgSendUtils {
                     respFuture.get(respFuture.getTimeout());
                 }
                 return true;
-                // 发送失败就进行重试
-            } catch (Exception e) {
-                log.error(e.getMessage(), e);
             } catch (Throwable throwable) {
-                log.error(throwable.getMessage(), throwable);
+                throwable.printStackTrace();
             }
             tryCnt++;
         }

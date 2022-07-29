@@ -52,8 +52,6 @@ public class MQUDPServer {
             ChannelFuture future = bootstrap.bind(this.port).sync();
             log.info("mq udp server start at : {} ", this.port);
             this.channel = future.channel();
-            // 发送 broker 信息
-            syncBrokerInfo();
             this.channel.closeFuture().await();
         } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
@@ -66,22 +64,5 @@ public class MQUDPServer {
 
     public void sendMsg(String address, Integer port, MQMessage.MQEntity mqEntity) {
         UdpMsgSendUtils.sendAckMsg(this.channel, address, port, mqEntity);
-    }
-
-
-    private void syncBrokerInfo() {
-        // 发送广播信息
-//        if (NameServerCache.runningMode.equals(RunningMode.Cluster)) {
-//            for (int i = 0; i < NameServerCache.servers.size(); i++) {
-//                // 通过 udp 的方式进行链接
-//                MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
-//                        .setId(UUID.randomUUID().toString())
-//                        .setMsg(NameServerCache.servers.get(i)).build();
-//                String[] info = NameServerCache.servers.get(i).split(":");
-//                String host = info[0];
-//                Integer port = Integer.valueOf(info[1]);
-//                UdpMsgSendUtils.sendAckMsg(this.channel, host, port, mqEntity);
-//            }
-//        }
     }
 }

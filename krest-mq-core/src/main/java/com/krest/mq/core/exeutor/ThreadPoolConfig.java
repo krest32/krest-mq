@@ -14,8 +14,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ThreadPoolConfig {
-    Integer coreSize = 8;
-    Integer maxSize = 16;
+    Integer coreSize = 10;
+    Integer maxSize = 20;
     Integer keepAliveTime = 3 * 60 * 1000;
-    Integer queueSize = 50 * 1000;
+    Integer queueSize = 50 * 1000 * 1000;
 }

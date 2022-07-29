@@ -41,7 +41,7 @@ public class HttpUtil {
             response = okHttpClient.newCall(request).execute();
             return response.body().string();
         } catch (IOException e) {
-            log.error("can not connect to : {} ", mqRequest.getTargetUrl());
+            log.warn("can not connect to : {} ", mqRequest.getTargetUrl());
             return "error";
         } finally {
             if (null != response) {
@@ -94,6 +94,29 @@ public class HttpUtil {
         } catch (IOException e) {
             log.error("can not connect to : {} ", mqRequest.getTargetUrl());
             return false;
+        } finally {
+            if (null != response) {
+                response.close();
+            }
+        }
+    }
+
+
+    /**
+     * 发送 get 请求
+     */
+    public static String isServerInUse(MqRequest mqRequest) {
+        Request request = new Request.Builder()
+                .url(mqRequest.getTargetUrl())
+                .get()
+                .build();
+        Response response = null;
+        try {
+            response = okHttpClient.newCall(request).execute();
+            return response.body().string();
+        } catch (IOException e) {
+            log.error("can not connect to : {} ", mqRequest.getTargetUrl());
+            return null;
         } finally {
             if (null != response) {
                 response.close();

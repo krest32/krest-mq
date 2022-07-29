@@ -2,15 +2,16 @@ package com.krest.mq.admin.controller;
 
 import com.alibaba.fastjson.JSONObject;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.ProtocolStringList;
 import com.google.protobuf.util.JsonFormat;
 import com.krest.mq.admin.util.SyncDataUtils;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.BrokerLocalCache;
-import com.krest.mq.core.entity.*;
+import com.krest.mq.core.entity.DelayMessage;
+import com.krest.mq.core.entity.MQMessage;
+import com.krest.mq.core.entity.QueueInfo;
+import com.krest.mq.core.entity.SyncInfo;
 import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.core.utils.SyncUtil;
-import lombok.extern.log4j.Log4j;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -59,7 +60,7 @@ public class QueueManagerController {
      * 获取所有队列的 基本信息
      */
     @GetMapping("get/base/queue/info")
-    public ConcurrentHashMap<String, QueueInfo> getQueueInfo() {
+    public Map<String, QueueInfo> getQueueInfo() {
         // 遍历当前 server 的 queue info map ， 同时为其添加 kid 信息
         for (Map.Entry<String, QueueInfo> entry : BrokerLocalCache.queueInfoMap.entrySet()) {
             if (StringUtils.isBlank(entry.getValue().getKid())) {
@@ -70,15 +71,9 @@ public class QueueManagerController {
             QueueInfo queueInfo = entry.getValue();
             if (queueInfo.getType().equals(QueueType.DELAY)) {
                 DelayQueue<DelayMessage> delayQueue = BrokerLocalCache.delayQueueMap.get(queueInfo.getName());
-                if (null != delayQueue && delayQueue.size() > 0) {
-                    queueInfo.setOffset(delayQueue.peek().getMqEntity().getId());
-                }
                 queueInfo.setAmount(null == delayQueue ? -1 : delayQueue.size());
             } else {
                 BlockingDeque<MQMessage.MQEntity> blockingDeque = BrokerLocalCache.queueMap.get(queueInfo.getName());
-                if (null != blockingDeque && blockingDeque.size() > 0) {
-                    queueInfo.setOffset(blockingDeque.peek().getId());
-                }
                 queueInfo.setAmount(null == blockingDeque ? -1 : blockingDeque.size());
             }
 
@@ -116,4 +111,13 @@ public class QueueManagerController {
             SyncUtil.saveQueueInfoMap(syncInfo.getQueueName(), mqEntity.getId());
         }
     }
+
+
+    @GetMapping("check/in/use")
+    public String checkIsInUSe() {
+        // 为空 返回 -1， 否则返回 1
+        return BrokerLocalCache.clientChannels.isEmpty() ? "-1" : "1";
+    }
+
+
 }

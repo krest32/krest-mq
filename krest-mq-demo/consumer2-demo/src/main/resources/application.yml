@@ -8,9 +8,19 @@ spring:
     active: dev
 
 
+
 krest:
   mq:
-    host: localhost
-    port: 10001
     workerId: 1
     datacenterId: 2
+    server:
+      - localhost:9001
+      - localhost:9002
+      - localhost:9003
+    # 将要发消息的队列
+    queue:
+      - demo
+      - demo1
+      - demo2
+#      - demo3
+#      - demo4

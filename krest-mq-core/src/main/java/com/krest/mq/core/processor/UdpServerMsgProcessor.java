@@ -22,7 +22,6 @@ public class UdpServerMsgProcessor {
      */
     public static void msgCenter(ChannelHandlerContext ctx, DatagramPacket datagramPacket) {
         MQMessage.MQEntity entity = MsgResolver.parseUdpDatagramPacket(datagramPacket);
-
         // 设置 udp channel， 用于发送数据信息
         if (null == BrokerLocalCache.udpChannel) {
             BrokerLocalCache.udpChannel = ctx.channel();

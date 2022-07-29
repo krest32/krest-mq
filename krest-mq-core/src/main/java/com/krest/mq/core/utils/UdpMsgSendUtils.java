@@ -16,8 +16,6 @@ import java.net.InetSocketAddress;
 public class UdpMsgSendUtils {
 
 
-
-
     public static boolean sendAckMsg(Channel channel, String host, Integer port, MQMessage.MQEntity mqEntity) {
         int tryCnt = 0;
         while (tryCnt < 3) {
@@ -52,14 +50,17 @@ public class UdpMsgSendUtils {
     private static boolean doSendAckMsg(Channel channel, MQMessage.MQEntity mqEntity, DatagramPacket responseData) {
         try {
             // 设置一秒的反馈时间
-            MQRespFuture future = new MQRespFuture(mqEntity.getId(), 1000);
-            AdminServerCache.udpRespFutureHandler.register(mqEntity.getId(), future);
+            MQRespFuture respFuture = new MQRespFuture(mqEntity.getId(), 0);
+            AdminServerCache.udpRespFutureHandler.register(mqEntity.getId(), respFuture);
             channel.writeAndFlush(responseData);
-            if (future.isSuccess()) {
-                return true;
-            }
-        } catch (Exception e) {
-            log.error("error");
+//            if (respFuture.getTimeout() == 0) {
+//                respFuture.get();
+//            } else {
+//                respFuture.get(respFuture.getTimeout());
+//            }
+            return true;
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
         }
         return false;
     }

@@ -30,7 +30,6 @@ public class MQInitialize implements InitializingBean {
         AdminServerCache.kid = config.getKid();
         AdminServerCache.clusterInfo.setDuplicate(config.getDuplicate());
         SyncDataUtils.mqConfig = config;
-
         // MQ server 缓存文件配置
         KrestFileConfig.maxFileSize = config.getMaxFileSize();
         KrestFileConfig.maxFileCount = config.getMaxFileCount();
@@ -38,7 +37,6 @@ public class MQInitialize implements InitializingBean {
         for (ServerInfo serverInfo : config.getServerList()) {
             String kid = serverInfo.getKid();
             AdminServerCache.kidServerMap.put(kid, serverInfo);
-
             if (serverInfo.getKid().equals(config.getKid())) {
                 AdminServerCache.selfServerInfo = serverInfo;
             }

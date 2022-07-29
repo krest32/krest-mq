@@ -34,4 +34,9 @@ public class ProducerHandlerAdapter extends SimpleChannelInboundHandler<MQMessag
             inactiveListener.onInactive(this.mqEntity);
         }
     }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        log.info("生产端检测到异常， 服务端链接断开");
+    }
 }

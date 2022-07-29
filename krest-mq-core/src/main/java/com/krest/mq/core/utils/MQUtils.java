@@ -19,18 +19,10 @@ public class MQUtils {
                 return channel;
             } else {
                 log.info("Connect to [" + host + ":" + port + "] failed.");
-                log.info("Try to reconnect in 10s.");
-                Thread.sleep(10000);
                 return null;
             }
         } catch (Exception exception) {
             log.info("Connect to [" + host + ":" + port + "] failed.");
-            log.info("Try to reconnect in 10 seconds.");
-            try {
-                Thread.sleep(10000);
-            } catch (InterruptedException e) {
-                log.error(e.getMessage(), e);
-            }
             return null;
         }
     }

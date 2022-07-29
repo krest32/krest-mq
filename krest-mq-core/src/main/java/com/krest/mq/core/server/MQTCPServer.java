@@ -88,6 +88,7 @@ public class MQTCPServer {
 
     private void initData() {
         log.info("开始初始化数据...");
+
         // 由于 channel 未能序列化，所以仅仅保存当前 queue的信息
         BrokerLocalCache.queueInfoMap = (ConcurrentHashMap<String, QueueInfo>)
                 KrestFileHandler.readObject(CacheFileConfig.queueInfoFilePath);
@@ -95,11 +96,9 @@ public class MQTCPServer {
         if (null == BrokerLocalCache.queueInfoMap) {
             BrokerLocalCache.queueInfoMap = new ConcurrentHashMap<>();
         }
-
         // 还原队列信息
         recoverQueueData();
         log.info("queue info map :{} ", BrokerLocalCache.queueInfoMap);
-        log.info("初始化数据完成");
     }
 
 
@@ -160,7 +159,6 @@ public class MQTCPServer {
     private void recoverDelayQueue(String queueName, QueueInfo queueInfo) throws InvalidProtocolBufferException {
         // 开始构建队列
         DelayQueue<DelayMessage> curBlockQueue = new DelayQueue<>();
-
         if (StringUtils.isBlank(queueInfo.getOffset())) {
             return;
         }

@@ -3,6 +3,7 @@ package com.krest.mq.admin.util;
 import com.alibaba.fastjson.JSONObject;
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.core.cache.AdminServerCache;
+import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.entity.ClusterInfo;
 import com.krest.mq.core.entity.MqRequest;
 import com.krest.mq.core.entity.QueueInfo;
@@ -34,32 +35,30 @@ public class SyncDataUtils {
 
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
 
-            if (AdminServerCache.isSyncData) {
+            if (AdminServerCache.isSyncClusterInfo) {
                 log.info("still in sync cluster info, please wait next run schedule job");
                 return;
             }
 
-            AdminServerCache.isSyncData = true;
+            AdminServerCache.isSyncClusterInfo = true;
             ClusterInfo clusterInfo = AdminServerCache.clusterInfo;
 
             // 检查 kid 上面的 queue 信息是否是最新的， 如果不是就删除
-            getQueueInfoMap(clusterInfo);
+            geClusterInfo(clusterInfo);
 
             // 然后发送已经同步的 cluster 信息
-            for (ServerInfo curServer : AdminServerCache.curServers) {
+            for (ServerInfo curServer : AdminServerCache.clusterInfo.getCurServers()) {
                 String targetUrl = "http://" + curServer.getTargetAddress() + syncClusterInfoPath;
                 MqRequest request = new MqRequest(targetUrl, clusterInfo);
                 HttpUtil.postRequest(request);
             }
 
-            AdminServerCache.isSyncData = false;
-            log.info("sync cluster info and data complete");
+            AdminServerCache.isSyncClusterInfo = false;
         }
     }
 
 
-    private static void getQueueInfoMap(ClusterInfo clusterInfo) {
-
+    private static void geClusterInfo(ClusterInfo clusterInfo) {
         // 遍历所有的当前 server，获取得到 queue info map
         clusterInfo.getQueueAmountMap().clear();
         clusterInfo.getQueueOffsetMap().clear();
@@ -67,7 +66,7 @@ public class SyncDataUtils {
         clusterInfo.getKidQueueInfo().clear();
         clusterInfo.getQueuePacketMap().clear();
 
-        for (ServerInfo curServer : AdminServerCache.curServers) {
+        for (ServerInfo curServer : AdminServerCache.clusterInfo.getCurServers()) {
             // 获取 queue info Map
             String targetUrl = "http://" + curServer.getTargetAddress() + getQueueInfoPath;
             MqRequest request = new MqRequest(targetUrl, null);
@@ -92,7 +91,7 @@ public class SyncDataUtils {
                     // 设置 queue server 信息
                     Set<ServerInfo> serverSet = clusterInfo.getQueuePacketMap().getOrDefault(queueName, new HashSet<>());
                     serverSet.add(curServer);
-                    clusterInfo.getQueuePacketMap().put(queueName,serverSet);
+                    clusterInfo.getQueuePacketMap().put(queueName, serverSet);
                 }
                 clusterInfo.getKidQueueInfo().put(curServer.getKid(), queueInfoMap);
             } else {
@@ -101,19 +100,20 @@ public class SyncDataUtils {
         }
     }
 
-    private static void setQueueOffsetAndSize(ClusterInfo clusterInfo, ServerInfo curServer, QueueInfo tempQueueInfo, String queueName) {
 
+    private static void setQueueOffsetAndSize(ClusterInfo clusterInfo, ServerInfo curServer, QueueInfo tempQueueInfo, String queueName) {
         Long tempQueueOffset = Long.valueOf(tempQueueInfo.getOffset() == null ? "-1L" : tempQueueInfo.getOffset());
         Long curMaxOffset = clusterInfo.getQueueOffsetMap().getOrDefault(queueName, -1L);
         Integer temQueueSize = tempQueueInfo.getAmount() == null ? -1 : tempQueueInfo.getAmount();
         Integer curQueueSize = clusterInfo.getQueueSizeMap().getOrDefault(queueName, 0);
-        if (tempQueueOffset.compareTo(curMaxOffset) >= 0) {
+        if (tempQueueOffset.compareTo(curMaxOffset) > 0) {
             clusterInfo.getQueueOffsetMap().put(queueName, tempQueueOffset);
             clusterInfo.getQueueSizeMap().put(queueName, Math.max(temQueueSize, curQueueSize));
-            if (temQueueSize >= curQueueSize) {
-                clusterInfo.getQueueLatestKid().put(queueName, curServer.getKid());
-            }
         }
+        if (temQueueSize > curQueueSize) {
+            clusterInfo.getQueueLatestKid().put(queueName, curServer.getKid());
+        }
+
     }
 
     private static void setQueueAmount(ClusterInfo clusterInfo, String queueName) {
@@ -121,7 +121,7 @@ public class SyncDataUtils {
         clusterInfo.getQueueAmountMap().put(queueName, amount + 1);
     }
 
-    private static QueueInfo getQueueInfo(JSONObject jsonObject) {
+    public static QueueInfo getQueueInfo(JSONObject jsonObject) {
         QueueType queueType = null;
         switch (jsonObject.getString("type")) {
             case "PERMANENT":
@@ -154,10 +154,14 @@ public class SyncDataUtils {
         }
 
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)
-                && AdminServerCache.isSyncData) {
+                && AdminServerCache.isSyncClusterInfo) {
             log.info("still in sync data with other broker....");
             return false;
         }
         return true;
+    }
+
+    public static Map<String, QueueInfo> getLocalQueueInfoMap() {
+        return BrokerLocalCache.queueInfoMap;
     }
 }

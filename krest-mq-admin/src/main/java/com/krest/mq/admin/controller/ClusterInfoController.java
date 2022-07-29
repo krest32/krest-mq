@@ -2,24 +2,20 @@ package com.krest.mq.admin.controller;
 
 
 import com.alibaba.fastjson.JSONObject;
-import com.krest.mq.admin.balancer.BrokerBalancer;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
 import com.krest.mq.admin.util.ClusterUtil;
 import com.krest.mq.admin.util.SyncDataUtils;
 import com.krest.mq.core.cache.AdminServerCache;
-import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.entity.*;
 import com.krest.mq.core.enums.ClusterRole;
 import com.krest.mq.core.exeutor.LocalExecutor;
 import com.krest.mq.core.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Iterator;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 
@@ -28,10 +24,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 @RequestMapping("mq/server")
 public class ClusterInfoController {
 
-
-
-    @Autowired
-    ClusterUtil clusterUtil;
 
     /**
      * 获取配置内容
@@ -42,9 +34,9 @@ public class ClusterInfoController {
     }
 
     @GetMapping("cur/servers")
-    public CopyOnWriteArraySet<ServerInfo> getCurServices() {
+    public Set<ServerInfo> getCurServices() {
         if (AdminServerCache.clusterInfo.equals(ClusterRole.Leader)) {
-            return AdminServerCache.curServers;
+            return AdminServerCache.clusterInfo.getCurServers();
         }
         return null;
     }
@@ -80,12 +72,12 @@ public class ClusterInfoController {
      * 向 leader 中注册 follower
      */
     @PostMapping("register")
-    public ServerInfo register(@RequestBody ServerInfo serverInfo)  {
+    public ServerInfo register(@RequestBody ServerInfo serverInfo) {
         // 如果正在选择 Leader, 那么就进入等到状态
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
-            log.info("receive new service register : " + serverInfo);
+            log.info("receive service register : " + serverInfo.getTargetAddress());
             // 添加当前 leader的服务中
-            AdminServerCache.curServers.add(serverInfo);
+            AdminServerCache.clusterInfo.getCurServers().add(serverInfo);
             return AdminServerCache.leaderInfo;
         }
         // 返回一个空对象
@@ -98,7 +90,7 @@ public class ClusterInfoController {
     @PostMapping("check/leader")
     public String checkLeader(@RequestBody ServerInfo serverInfo) {
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
-            if (AdminServerCache.curServers.add(serverInfo)) {
+            if (AdminServerCache.clusterInfo.getCurServers().add(serverInfo)) {
                 log.info("receive be lost register : " + serverInfo);
             }
         }
@@ -110,8 +102,9 @@ public class ClusterInfoController {
      * leader 检测 follower
      */
     @PostMapping("check/follower")
-    public String checkFollower(@RequestBody ServerInfo serverInfo) {
+    public String checkFollower(@RequestBody String serverInfoStr) {
         // 如果发来的 Leader 信息，不同于自己的认证 Leader, 那么就需要进入重新选举状态
+        ServerInfo serverInfo = JSONObject.parseObject(serverInfoStr, ServerInfo.class);
         if (null != AdminServerCache.leaderInfo) {
             if (!serverInfo.getTargetAddress().equals(AdminServerCache.leaderInfo.getTargetAddress())) {
                 log.info("cluster leader have more than one");
@@ -136,21 +129,29 @@ public class ClusterInfoController {
     @GetMapping("reselect/leader")
     public void reSelectLeader() {
         log.info("start re select cluster leader...");
-        clusterUtil.initData();
-        LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(SyncDataUtils.mqConfig));
+        ClusterUtil.initData();
+        LocalExecutor.NormalUseExecutor.execute(
+                new SearchLeaderRunnable(SyncDataUtils.mqConfig)
+        );
     }
 
     /**
      * 普通选举 leader
      */
     @PostMapping("select/leader")
-    public String selectLeader(@RequestBody ServerInfo server) {
-        // 要选举的 Leader 信息
-        String targetAddress = "http://" + server.getTargetAddress() + "/mq/server/check/connect";
-        boolean flag = HttpUtil.getRequest(new MqRequest(targetAddress, null));
-        // 同意是 0， 不同意为 1
-        return flag ? "0" : "1";
+    public String selectLeader(@RequestBody String serverInfoStr) {
+        // 与自己选举的 leader 进行对比，如果相同放回 1， 如果不同返回 -1
+        ServerInfo server = JSONObject.parseObject(serverInfoStr, ServerInfo.class);
+        List<ServerInfo> curServers = new ArrayList<>(AdminServerCache.clusterInfo.getCurServers());
+        curServers.sort((o1, o2) ->
+                Integer.valueOf(o2.getKid()).compareTo(Integer.valueOf(o1.getKid()))
+        );
+        if (curServers.get(curServers.size() - 1).getKid().equals(server.getKid())) {
+            return "1";
+        }
+        return "-1";
     }
+
 
 }
 

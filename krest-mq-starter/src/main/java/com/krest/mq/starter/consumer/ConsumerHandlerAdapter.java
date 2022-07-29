@@ -29,7 +29,6 @@ public class ConsumerHandlerAdapter extends SimpleChannelInboundHandler<MQMessag
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, MQMessage.MQEntity response) throws Exception {
-//        System.out.println("消费者获取信息：" + response);
         Method[] declaredMethods = this.bean.getClass().getDeclaredMethods();
         for (String queue : response.getQueueList()) {
             for (Method method : declaredMethods) {
@@ -55,5 +54,10 @@ public class ConsumerHandlerAdapter extends SimpleChannelInboundHandler<MQMessag
         if (inactiveListener != null) {
             inactiveListener.onInactive(this.mqEntity);
         }
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        log.info("消费端检测到异常， 服务端链接断开");
     }
 }

@@ -3,6 +3,7 @@ package com.krest.mq.admin.thread;
 
 import com.alibaba.fastjson.JSONObject;
 import com.krest.mq.admin.properties.MqConfig;
+import com.krest.mq.admin.util.ClusterUtil;
 import com.krest.mq.admin.util.SyncDataUtils;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.entity.MqRequest;
@@ -12,8 +13,7 @@ import com.krest.mq.core.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 public class SearchLeaderRunnable implements Runnable {
@@ -23,42 +23,57 @@ public class SearchLeaderRunnable implements Runnable {
 
     MqConfig mqConfig;
 
-
     public SearchLeaderRunnable(MqConfig config) {
         this.mqConfig = config;
     }
 
     @Override
     public void run() {
+        if (AdminServerCache.isSelectServer)
+            return;
 
-
-        if (null == AdminServerCache.leaderInfo) {
-
-            AdminServerCache.isSelectServer = true;
-            // 寻找 Leader
-            searchLeader();
-            // 选举 Leader
-            selectLeader();
-
-            AdminServerCache.isSelectServer = false;
-        }
-
-        SyncDataUtils.syncClusterInfo();
-
+        AdminServerCache.isSelectServer = true;
+        searchLeader();
+        selectLeader();
+        AdminServerCache.isSelectServer = false;
     }
 
-
+    /**
+     * 寻找 Leader
+     */
     private void searchLeader() {
+
+        // 如果自己就是Leader 那么就不需要寻找
+        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+            return;
+        }
+
+
+        // 如果此时的leader信息不为null，那就进行探测
+        if (null != AdminServerCache.leaderInfo) {
+            boolean flag = ClusterUtil.detectLeader(
+                    AdminServerCache.leaderInfo.getTargetAddress(),
+                    AdminServerCache.selfServerInfo
+            );
+            // 探测失败
+            if (!flag) {
+                AdminServerCache.leaderInfo = null;
+                AdminServerCache.clusterRole = ClusterRole.Observer;
+            } else {
+                AdminServerCache.clusterRole = ClusterRole.Follower;
+                log.info("leader info : {} ", AdminServerCache.leaderInfo);
+                return;
+            }
+        }
 
         // 遍历所有的信息
         for (int i = 0; i < this.mqConfig.getServerList().size(); i++) {
             ServerInfo curServerInfo = this.mqConfig.getServerList().get(i);
 
-            // 如果当前的角色不是 观察模式 就退出
-            if (!AdminServerCache.clusterRole.equals(ClusterRole.Observer)
-                    && null != AdminServerCache.leaderInfo) {
-                log.info("Leader 信息：" + AdminServerCache.leaderInfo);
-                break;
+            // 跳过自己
+            if (curServerInfo.getKid().equals(AdminServerCache.kid)) {
+                AdminServerCache.clusterInfo.getCurServers().add(curServerInfo);
+                continue;
             }
 
             // 开始寻找 leader
@@ -68,82 +83,80 @@ public class SearchLeaderRunnable implements Runnable {
 
             // 接口返回 null
             if (StringUtils.isBlank(responseStr)) {
-                AdminServerCache.curServers.add(curServerInfo);
+                continue;
             }
-
+            // 接口返回 leader 信息
             if (!"error".equals(responseStr)) {
                 ServerInfo tempServer = JSONObject.parseObject(responseStr, ServerInfo.class);
-                // 如果找到了 Leader, 那么就设置信息
-                AdminServerCache.leaderInfo = tempServer;
-                AdminServerCache.clusterRole = ClusterRole.Follower;
+
+                // 检查返回的信息
+                boolean flag = ClusterUtil.detectLeader(
+                        tempServer.getTargetAddress(),
+                        AdminServerCache.selfServerInfo
+                );
+                // 探测失败
+                if (!flag) {
+                    AdminServerCache.leaderInfo = null;
+                    AdminServerCache.clusterRole = ClusterRole.Observer;
+                } else {
+                    AdminServerCache.leaderInfo = tempServer;
+                    AdminServerCache.clusterRole = ClusterRole.Follower;
+                    log.info("leader info : {} ", AdminServerCache.leaderInfo.getTargetAddress());
+                    log.info("cluster role : " + AdminServerCache.clusterRole);
+                    return;
+                }
             }
         }
     }
 
-
-    private void selectLeader() {
+    /**
+     * 如果没有找到leader， 那么就需要重新选举 leader
+     */
+    private synchronized void selectLeader() {
         // 如果没有站到 leader， 就需要进入到选举 leader 的模式
         if (null == AdminServerCache.leaderInfo
                 || AdminServerCache.clusterRole.equals(ClusterRole.Observer)) {
 
             log.info("start select leader...");
-            List<Map.Entry<String, ServerInfo>> serverList = AdminServerCache.getSelectServerList();
-            ServerInfo selectedServer = null;
+            // 转化为 list, 同时根据 kid 降序排序
+            List<ServerInfo> curServers = new ArrayList<>(AdminServerCache.clusterInfo.getCurServers());
+            curServers.sort((o1, o2) ->
+                    Integer.valueOf(o2.getKid()).compareTo(Integer.valueOf(o1.getKid()))
+            );
+            ServerInfo selectedServer = curServers.get(curServers.size() - 1);
 
-            // 找到最大的 kid server info
-            for (Map.Entry<String, ServerInfo> entry : serverList) {
-                if (AdminServerCache.curServers.contains(entry.getValue())) {
-                    if (null == selectedServer) {
-                        selectedServer = entry.getValue();
-                        break;
-                    }
-                }
-            }
-
-            // 如果自身就是最大的,就跳过，否则发送选举信息
-            Integer agreeCount = 0;
-            for (Map.Entry<String, ServerInfo> entry : serverList) {
+            for (ServerInfo serverInfo : curServers) {
                 // 如果当前的 server 存活者，那就发送选举
-                if (AdminServerCache.curServers.contains(entry.getValue())) {
-                    MqRequest request = new MqRequest(
-                            "http://" + entry.getValue().getTargetAddress() + selectLeaderPath,
-                            selectedServer);
-                    String ans = HttpUtil.postRequest(request);
-
-                    if (null != ans) {
-                        if (ans.equals("0")) {
-                            agreeCount++;
-                        } else {
-                            if (entry.getKey().equals(AdminServerCache.kid)) {
-                                continue;
-                            }
-
-                            // 如果返回了 1, 证明有的 server 无法连接当前 server
-                            log.error(entry.getValue().getTargetAddress()
-                                    + " can not connect " +
-                                    selectedServer.getTargetAddress());
-                        }
+                MqRequest request = new MqRequest(
+                        "http://" + serverInfo.getTargetAddress() + selectLeaderPath,
+                        selectedServer);
+                String ans = HttpUtil.postRequest(request);
+                if (null != ans) {
+                    if (ans.equals("1")) {
+                        continue;
+                    } else {
+                        run();
                     }
                 }
             }
+            if (selectedServer.getKid().equals(AdminServerCache.kid)) {
+                AdminServerCache.clusterRole = ClusterRole.Leader;
+            } else {
+                AdminServerCache.clusterRole = ClusterRole.Follower;
+            }
+            AdminServerCache.leaderInfo = selectedServer;
+            log.info("select leader success, leader info : " + AdminServerCache.leaderInfo.getTargetAddress());
+            log.info("select leader success, cluster role info : " + AdminServerCache.clusterRole);
 
-            if (agreeCount >= (AdminServerCache.curServers.size() / 2)) {
 
-                if (selectedServer == null) {
-                    selectedServer = AdminServerCache.selfServerInfo;
+            // 选举结束通知其他 server
+            if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+                Iterator<Map.Entry<String, ServerInfo>> iterator = AdminServerCache.getSelectServerList().iterator();
+                while (iterator.hasNext()) {
+                    Map.Entry<String, ServerInfo> next = iterator.next();
+                    ServerInfo serverInfo = next.getValue();
+                    ClusterUtil.detectFollower(serverInfo.getTargetAddress(), AdminServerCache.leaderInfo);
                 }
-
-                AdminServerCache.leaderInfo = selectedServer;
-
-                if (!selectedServer.getTargetAddress()
-                        .equals(AdminServerCache.selfServerInfo.getTargetAddress())) {
-                    AdminServerCache.clusterRole = ClusterRole.Follower;
-                } else {
-                    AdminServerCache.clusterRole = ClusterRole.Leader;
-                }
-
-                log.info("select leader success, leader info : " + selectedServer);
-                log.info("select leader success, cluster role info : " + AdminServerCache.clusterRole);
             }
         }
     }

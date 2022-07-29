@@ -16,8 +16,6 @@ public class TcpClientMsgProcessor {
 
     public static void msgCenter(ChannelHandlerContext ctx, MQMessage.MQEntity entity) {
 
-
-        // 先排除异常情况
         // 1. 没有设定消息的来源
         if (entity.getMsgType() == 0) {
             handlerErr(ctx, entity, "unknown msg type");

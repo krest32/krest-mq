@@ -19,19 +19,33 @@ public class ProducerController {
         return "hello";
     }
 
-    @PostMapping("sendMsg")
-    public String templateSendMsg(@RequestBody RequestEntity entity) {
+    @PostMapping("sendMsg1")
+    public String templateSendMsg1(@RequestBody RequestEntity entity) {
 
         Long start = System.currentTimeMillis();
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < 1000; i++) {
             mqTemplate.sendMsg(entity.getMsg(), entity.getQueue(),
                     entity.getTransferType() == 1 ? TransferType.POINT : TransferType.BROADCAST,
                     entity.getIsAck() == 1 ? true : false, entity.getTimeout());
 
         }
         Long end = System.currentTimeMillis();
-        double ans = (end - start) * 0.001;
+        Long ans = (end - start) ;
+        return String.valueOf(ans);
+    }
 
+    @PostMapping("sendMsg2")
+    public String templateSendMsg2(@RequestBody RequestEntity entity) {
+
+        Long start = System.currentTimeMillis();
+        for (int i = 0; i < 1000; i++) {
+            mqTemplate.sendMsg(entity.getMsg(), entity.getQueue(),
+                    entity.getTransferType() == 1 ? TransferType.POINT : TransferType.BROADCAST,
+                    entity.getIsAck() == 1 ? true : false, entity.getTimeout());
+
+        }
+        Long end = System.currentTimeMillis();
+        Long ans = (end - start) ;
         return String.valueOf(ans);
     }
 }
