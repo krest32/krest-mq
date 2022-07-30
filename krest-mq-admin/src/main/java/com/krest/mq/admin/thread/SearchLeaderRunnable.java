@@ -133,9 +133,7 @@ public class SearchLeaderRunnable implements Runnable {
             curServers.sort((o1, o2) ->
                     Integer.valueOf(o2.getKid()).compareTo(Integer.valueOf(o1.getKid()))
             );
-            for (ServerInfo curServer : curServers) {
-                System.out.println(curServer.getTargetAddress());
-            }
+
             AdminServerCache.selectedServer = curServers.get(curServers.size() - 1);
 
             for (ServerInfo serverInfo : curServers) {
