@@ -35,8 +35,6 @@ public class BalanceDataJob {
                 return;
             log.info("reBalanceQueue....");
 
-            SyncDataUtils.syncClusterInfo();
-
             BrokerBalancer.run();
 
             log.info("reBalanceQueue finish");

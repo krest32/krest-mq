@@ -66,7 +66,7 @@ public class SyncDataUtils {
         clusterInfo.getKidQueueInfo().clear();
         clusterInfo.getQueuePacketMap().clear();
 
-        for (ServerInfo curServer : AdminServerCache.clusterInfo.getCurServers()) {
+        for (ServerInfo curServer : clusterInfo.getCurServers()) {
             // 获取 queue info Map
             String targetUrl = "http://" + curServer.getTargetAddress() + getQueueInfoPath;
             MqRequest request = new MqRequest(targetUrl, null);

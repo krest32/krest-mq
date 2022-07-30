@@ -4,7 +4,6 @@ package com.krest.mq.admin.thread;
 import com.alibaba.fastjson.JSONObject;
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.admin.util.ClusterUtil;
-import com.krest.mq.admin.util.SyncDataUtils;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.entity.MqRequest;
 import com.krest.mq.core.entity.ServerInfo;
@@ -13,7 +12,10 @@ import com.krest.mq.core.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 public class SearchLeaderRunnable implements Runnable {
@@ -49,7 +51,7 @@ public class SearchLeaderRunnable implements Runnable {
         }
 
 
-        // 如果此时的leader信息不为null，那就进行探测
+        // 如果此时的 leader 信息不为 null，那就进行探测
         if (null != AdminServerCache.leaderInfo) {
             boolean flag = ClusterUtil.detectLeader(
                     AdminServerCache.leaderInfo.getTargetAddress(),
@@ -66,6 +68,8 @@ public class SearchLeaderRunnable implements Runnable {
             }
         }
 
+        AdminServerCache.clusterInfo.getCurServers().clear();
+
         // 遍历所有的信息
         for (int i = 0; i < this.mqConfig.getServerList().size(); i++) {
             ServerInfo curServerInfo = this.mqConfig.getServerList().get(i);
@@ -81,13 +85,15 @@ public class SearchLeaderRunnable implements Runnable {
             MqRequest request = new MqRequest(targetUtl, AdminServerCache.selfServerInfo);
             String responseStr = HttpUtil.postRequest(request);
 
-            // 接口返回 null
+            // 接口返回 null, 说明集群正在选举
             if (StringUtils.isBlank(responseStr)) {
+                AdminServerCache.clusterInfo.getCurServers().add(curServerInfo);
                 continue;
             }
             // 接口返回 leader 信息
             if (!"error".equals(responseStr)) {
                 ServerInfo tempServer = JSONObject.parseObject(responseStr, ServerInfo.class);
+                AdminServerCache.clusterInfo.getCurServers().add(curServerInfo);
 
                 // 检查返回的信息
                 boolean flag = ClusterUtil.detectLeader(
@@ -99,11 +105,15 @@ public class SearchLeaderRunnable implements Runnable {
                     AdminServerCache.leaderInfo = null;
                     AdminServerCache.clusterRole = ClusterRole.Observer;
                 } else {
-                    AdminServerCache.leaderInfo = tempServer;
-                    AdminServerCache.clusterRole = ClusterRole.Follower;
-                    log.info("leader info : {} ", AdminServerCache.leaderInfo.getTargetAddress());
-                    log.info("cluster role : " + AdminServerCache.clusterRole);
-                    return;
+                    log.info("get leader info from : {}, leader is : {}  ", curServerInfo.getTargetAddress(), tempServer.getTargetAddress());
+                    boolean isLeaderOK = ClusterUtil.detectLeader(tempServer.getTargetAddress(), AdminServerCache.selfServerInfo);
+                    if (isLeaderOK) {
+                        AdminServerCache.leaderInfo = tempServer;
+                        AdminServerCache.clusterRole = ClusterRole.Follower;
+                        return;
+                    } else {
+                        log.info("can not connect to : {} ", tempServer.getTargetAddress());
+                    }
                 }
             }
         }
@@ -123,15 +133,19 @@ public class SearchLeaderRunnable implements Runnable {
             curServers.sort((o1, o2) ->
                     Integer.valueOf(o2.getKid()).compareTo(Integer.valueOf(o1.getKid()))
             );
-            ServerInfo selectedServer = curServers.get(curServers.size() - 1);
+            for (ServerInfo curServer : curServers) {
+                System.out.println(curServer.getTargetAddress());
+            }
+            AdminServerCache.selectedServer = curServers.get(curServers.size() - 1);
 
             for (ServerInfo serverInfo : curServers) {
                 // 如果当前的 server 存活者，那就发送选举
                 MqRequest request = new MqRequest(
                         "http://" + serverInfo.getTargetAddress() + selectLeaderPath,
-                        selectedServer);
+                        AdminServerCache.selectedServer);
                 String ans = HttpUtil.postRequest(request);
                 if (null != ans) {
+                    // 如果同意，就继续通知其他 server， 否则开始重新查找
                     if (ans.equals("1")) {
                         continue;
                     } else {
@@ -139,12 +153,12 @@ public class SearchLeaderRunnable implements Runnable {
                     }
                 }
             }
-            if (selectedServer.getKid().equals(AdminServerCache.kid)) {
+            if (AdminServerCache.selectedServer.getKid().equals(AdminServerCache.kid)) {
                 AdminServerCache.clusterRole = ClusterRole.Leader;
             } else {
                 AdminServerCache.clusterRole = ClusterRole.Follower;
             }
-            AdminServerCache.leaderInfo = selectedServer;
+            AdminServerCache.leaderInfo = AdminServerCache.selectedServer;
             log.info("select leader success, leader info : " + AdminServerCache.leaderInfo.getTargetAddress());
             log.info("select leader success, cluster role info : " + AdminServerCache.clusterRole);
 

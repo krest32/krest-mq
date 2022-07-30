@@ -142,11 +142,8 @@ public class ClusterInfoController {
     public String selectLeader(@RequestBody String serverInfoStr) {
         // 与自己选举的 leader 进行对比，如果相同放回 1， 如果不同返回 -1
         ServerInfo server = JSONObject.parseObject(serverInfoStr, ServerInfo.class);
-        List<ServerInfo> curServers = new ArrayList<>(AdminServerCache.clusterInfo.getCurServers());
-        curServers.sort((o1, o2) ->
-                Integer.valueOf(o2.getKid()).compareTo(Integer.valueOf(o1.getKid()))
-        );
-        if (curServers.get(curServers.size() - 1).getKid().equals(server.getKid())) {
+        if (null != AdminServerCache.selectedServer
+                && AdminServerCache.selectedServer.getKid().equals(server.getKid())) {
             return "1";
         }
         return "-1";

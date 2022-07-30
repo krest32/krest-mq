@@ -30,6 +30,7 @@ public class DetectLeaderJob {
             // 如果仍然在选举状态
             if (AdminServerCache.isSelectServer)
                 return;
+
             long curMillions = System.currentTimeMillis();
             if (AdminServerCache.expireTime == null)
                 AdminServerCache.resetExpireTime();
@@ -42,6 +43,14 @@ public class DetectLeaderJob {
                     String ans = ClusterUtil.registerSelf();
                     if (StringUtils.isBlank(ans)) {
                         log.info("可能存在多个 leader, 开始重新选举");
+                        while (AdminServerCache.isKidBalanced) {
+                            log.info("正在 sync data, please wait");
+                            try {
+                                Thread.sleep(3 * 1000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
                         ClusterUtil.initData();
                         LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(SyncDataUtils.mqConfig));
                     } else {

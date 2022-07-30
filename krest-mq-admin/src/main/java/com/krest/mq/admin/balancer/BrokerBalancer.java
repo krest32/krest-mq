@@ -58,15 +58,16 @@ public class BrokerBalancer {
         }
         // 避免直接跳过了清理数据的地方
         SyncDataUtils.syncClusterInfo();
-
-        Iterator<Map.Entry<String, Integer>> secQueueAmountIt = AdminServerCache.clusterInfo.getQueueAmountMap().entrySet().iterator();
+        Map<String, Integer> queueAmountMap = new HashMap<>(AdminServerCache.clusterInfo.getQueueAmountMap());
+//        Iterator<Map.Entry<String, Integer>> secQueueAmountIt = AdminServerCache.clusterInfo.getQueueAmountMap().entrySet().iterator();
+        Iterator<Map.Entry<String, Integer>> secQueueAmountIt = queueAmountMap.entrySet().iterator();
         Map<String, String> kidRelationMap = new HashMap<>();
 
 
         while (null != secQueueAmountIt && secQueueAmountIt.hasNext()) {
             Map.Entry<String, Integer> entry = secQueueAmountIt.next();
             String queueName = entry.getKey();
-            Integer count = AdminServerCache.clusterInfo.getQueueAmountMap().get(queueName);
+            Integer count = queueAmountMap.get(queueName);
 
             // 第一种同步情况， 直接复制缺失的 queue 到对应的 kid
             if (count == null && duplicate == null) {

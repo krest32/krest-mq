@@ -55,6 +55,7 @@ public class AdminServerCache {
     // 记录的 Cluster 信息
     public volatile static ClusterInfo clusterInfo = new ClusterInfo();
     public static MQUDPServer mqudpServer;
+    public static ServerInfo selectedServer;
 
 
     // 重置反向探测的过期时间
