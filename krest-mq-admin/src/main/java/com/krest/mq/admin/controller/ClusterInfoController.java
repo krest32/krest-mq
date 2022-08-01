@@ -4,7 +4,7 @@ package com.krest.mq.admin.controller;
 import com.alibaba.fastjson.JSONObject;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
 import com.krest.mq.admin.util.ClusterUtil;
-import com.krest.mq.admin.util.SyncDataUtils;
+import com.krest.mq.admin.util.SyncDataUtil;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.entity.*;
 import com.krest.mq.core.enums.ClusterRole;
@@ -13,10 +13,7 @@ import com.krest.mq.core.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
 
 
 @Slf4j
@@ -30,13 +27,13 @@ public class ClusterInfoController {
      */
     @GetMapping("config")
     public String getConfig() {
-        return SyncDataUtils.mqConfig.toString();
+        return SyncDataUtil.mqConfig.toString();
     }
 
     @GetMapping("cur/servers")
     public Set<ServerInfo> getCurServices() {
-        if (AdminServerCache.clusterInfo.equals(ClusterRole.Leader)) {
-            return AdminServerCache.clusterInfo.getCurServers();
+        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+            return AdminServerCache.clusterInfo.get().getCurServers();
         }
         return null;
     }
@@ -54,8 +51,10 @@ public class ClusterInfoController {
      */
     @GetMapping("cluster/info")
     public ClusterInfo getClusterInfo() {
-        SyncDataUtils.syncClusterInfo();
-        return AdminServerCache.clusterInfo;
+        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+            SyncDataUtil.syncClusterInfo();
+        }
+        return AdminServerCache.clusterInfo.get();
     }
 
 
@@ -64,7 +63,7 @@ public class ClusterInfoController {
      */
     @PostMapping("sync/cluster-info")
     public void syncClusterInfo(@RequestBody ClusterInfo clusterInfo) {
-        AdminServerCache.clusterInfo = clusterInfo;
+        AdminServerCache.clusterInfo.set(clusterInfo);
     }
 
 
@@ -77,7 +76,7 @@ public class ClusterInfoController {
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
             log.info("receive service register : " + serverInfo.getTargetAddress());
             // 添加当前 leader的服务中
-            AdminServerCache.clusterInfo.getCurServers().add(serverInfo);
+            AdminServerCache.clusterInfo.get().getCurServers().add(serverInfo);
             return AdminServerCache.leaderInfo;
         }
         // 返回一个空对象
@@ -89,10 +88,9 @@ public class ClusterInfoController {
      */
     @PostMapping("check/leader")
     public String checkLeader(@RequestBody ServerInfo serverInfo) {
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
-            if (AdminServerCache.clusterInfo.getCurServers().add(serverInfo)) {
-                log.info("receive be lost register : " + serverInfo);
-            }
+        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader) && AdminServerCache.clusterInfo.get().getCurServers().add(serverInfo)) {
+            log.info("receive be lost register : " + serverInfo);
+
         }
         AdminServerCache.resetExpireTime();
         return "ok";
@@ -105,16 +103,15 @@ public class ClusterInfoController {
     public String checkFollower(@RequestBody String serverInfoStr) {
         // 如果发来的 Leader 信息，不同于自己的认证 Leader, 那么就需要进入重新选举状态
         ServerInfo serverInfo = JSONObject.parseObject(serverInfoStr, ServerInfo.class);
-        if (null != AdminServerCache.leaderInfo) {
-            if (!serverInfo.getTargetAddress().equals(AdminServerCache.leaderInfo.getTargetAddress())) {
-                log.info("cluster leader have more than one");
-                String reSelectPath = "/mq/server/reselect/leader";
-                // 通知所有的 server 进入到重新选举的状态
-                for (ServerInfo server : SyncDataUtils.mqConfig.getServerList()) {
-                    String targetUrl = "http://" + server.getTargetAddress() + reSelectPath;
-                    MqRequest request = new MqRequest(targetUrl, null);
-                    HttpUtil.getRequest(request);
-                }
+        if (null != AdminServerCache.leaderInfo
+                && !serverInfo.getTargetAddress().equals(AdminServerCache.leaderInfo.getTargetAddress())) {
+            log.info("cluster leader have more than one");
+            String reSelectPath = "/mq/server/reselect/leader";
+            // 通知所有的 server 进入到重新选举的状态
+            for (ServerInfo server : SyncDataUtil.mqConfig.getServerList()) {
+                String targetUrl = "http://" + server.getTargetAddress() + reSelectPath;
+                MqRequest request = new MqRequest(targetUrl, null);
+                HttpUtil.getRequest(request);
             }
         }
         // 重置过期时间
@@ -131,7 +128,7 @@ public class ClusterInfoController {
         log.info("start re select cluster leader...");
         ClusterUtil.initData();
         LocalExecutor.NormalUseExecutor.execute(
-                new SearchLeaderRunnable(SyncDataUtils.mqConfig)
+                new SearchLeaderRunnable(SyncDataUtil.mqConfig)
         );
     }
 

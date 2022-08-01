@@ -21,11 +21,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 
 @Slf4j
-public class SyncDataUtils {
+public class SyncDataUtil {
+
+    private SyncDataUtil() {
+    }
 
     public static MqConfig mqConfig;
-    static String getQueueInfoPath = "/queue/manager/get/base/queue/info";
-    static String syncClusterInfoPath = "/mq/manager/sync/cluster/info";
+    static final String GET_BASE_QUEUE_INFO = "/queue/manager/get/base/queue/info";
+    static final String SYNC_CLUSTER_INFO = "/mq/manager/sync/cluster/info";
 
     /**
      * 1. 清空新注册节点的数据
@@ -41,14 +44,14 @@ public class SyncDataUtils {
             }
 
             AdminServerCache.isSyncClusterInfo = true;
-            ClusterInfo clusterInfo = AdminServerCache.clusterInfo;
+            ClusterInfo clusterInfo = AdminServerCache.clusterInfo.get();
 
             // 检查 kid 上面的 queue 信息是否是最新的， 如果不是就删除
             geClusterInfo(clusterInfo);
 
             // 然后发送已经同步的 cluster 信息
-            for (ServerInfo curServer : AdminServerCache.clusterInfo.getCurServers()) {
-                String targetUrl = "http://" + curServer.getTargetAddress() + syncClusterInfoPath;
+            for (ServerInfo curServer : AdminServerCache.clusterInfo.get().getCurServers()) {
+                String targetUrl = "http://" + curServer.getTargetAddress() + SYNC_CLUSTER_INFO;
                 MqRequest request = new MqRequest(targetUrl, clusterInfo);
                 HttpUtil.postRequest(request);
             }
@@ -68,9 +71,15 @@ public class SyncDataUtils {
 
         for (ServerInfo curServer : clusterInfo.getCurServers()) {
             // 获取 queue info Map
-            String targetUrl = "http://" + curServer.getTargetAddress() + getQueueInfoPath;
+            String targetUrl = "http://" + curServer.getTargetAddress() + GET_BASE_QUEUE_INFO;
             MqRequest request = new MqRequest(targetUrl, null);
             ConcurrentHashMap<String, JSONObject> queueInfoStrMap = HttpUtil.getQueueInfo(request);
+
+            // 表示无法链接，那么就移除改 server
+            if (null == queueInfoStrMap) {
+                AdminServerCache.clusterInfo.get().getCurServers().remove(curServer);
+                continue;
+            }
 
             if (null != queueInfoStrMap && queueInfoStrMap.size() > 0) {
                 ConcurrentHashMap<String, QueueInfo> queueInfoMap = new ConcurrentHashMap<>();
@@ -81,6 +90,7 @@ public class SyncDataUtils {
                     // 得到 queue info
                     JSONObject jsonObject = mapEntry.getValue();
                     QueueInfo tempQueueInfo = getQueueInfo(jsonObject);
+
                     String queueName = tempQueueInfo.getName();
                     // 统计 queue 在集群中的数量
                     setQueueAmount(clusterInfo, queueName);
@@ -102,9 +112,14 @@ public class SyncDataUtils {
 
 
     private static void setQueueOffsetAndSize(ClusterInfo clusterInfo, ServerInfo curServer, QueueInfo tempQueueInfo, String queueName) {
-        Long tempQueueOffset = Long.valueOf(tempQueueInfo.getOffset() == null ? "-1L" : tempQueueInfo.getOffset());
+        Long tempQueueOffset;
+        if (tempQueueInfo.getOffset() == null) {
+            tempQueueOffset = -1L;
+        } else {
+            tempQueueOffset = Long.valueOf(tempQueueInfo.getOffset());
+        }
         Long curMaxOffset = clusterInfo.getQueueOffsetMap().getOrDefault(queueName, -1L);
-        Integer temQueueSize = tempQueueInfo.getAmount() == null ? -1 : tempQueueInfo.getAmount();
+        Integer temQueueSize = null == tempQueueInfo.getAmount() ? -1 : tempQueueInfo.getAmount();
         Integer curQueueSize = clusterInfo.getQueueSizeMap().getOrDefault(queueName, 0);
         if (tempQueueOffset.compareTo(curMaxOffset) > 0) {
             clusterInfo.getQueueOffsetMap().put(queueName, tempQueueOffset);

@@ -2,13 +2,11 @@ package com.krest.mq.admin.initialize;
 
 import com.krest.file.entity.KrestFileConfig;
 import com.krest.mq.admin.properties.MqConfig;
-import com.krest.mq.admin.thread.SearchLeaderRunnable;
-import com.krest.mq.admin.thread.TCPServerRunnable;
-import com.krest.mq.admin.util.SyncDataUtils;
+import com.krest.mq.admin.thread.TcpServerRunnable;
+import com.krest.mq.admin.util.SyncDataUtil;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.CacheFileConfig;
 import com.krest.mq.core.entity.ServerInfo;
-import com.krest.mq.core.exeutor.LocalExecutor;
 import com.krest.mq.core.runnable.UdpServerStartRunnable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
@@ -17,7 +15,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
-public class MQInitialize implements InitializingBean {
+public class MqInitialize implements InitializingBean {
 
     @Autowired
     MqConfig config;
@@ -28,8 +26,8 @@ public class MQInitialize implements InitializingBean {
         CacheFileConfig.queueInfoFilePath = config.getCacheFolder() + "queue-info";
         CacheFileConfig.queueCacheDatePath = config.getCacheFolder();
         AdminServerCache.kid = config.getKid();
-        AdminServerCache.clusterInfo.setDuplicate(config.getDuplicate());
-        SyncDataUtils.mqConfig = config;
+        AdminServerCache.clusterInfo.get().setDuplicate(config.getDuplicate());
+        SyncDataUtil.mqConfig = config;
         // MQ server 缓存文件配置
         KrestFileConfig.maxFileSize = config.getMaxFileSize();
         KrestFileConfig.maxFileCount = config.getMaxFileCount();
@@ -43,7 +41,7 @@ public class MQInitialize implements InitializingBean {
         }
 
         // 启动 mq tcp server, 开始工作
-        TCPServerRunnable runnable = new TCPServerRunnable(
+        TcpServerRunnable runnable = new TcpServerRunnable(
                 AdminServerCache.selfServerInfo.getTcpPort()
         );
         Thread tcpThread = new Thread(runnable);

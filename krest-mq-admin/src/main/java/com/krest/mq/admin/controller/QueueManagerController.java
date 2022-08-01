@@ -3,7 +3,7 @@ package com.krest.mq.admin.controller;
 import com.alibaba.fastjson.JSONObject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
-import com.krest.mq.admin.util.SyncDataUtils;
+import com.krest.mq.admin.util.SyncDataUtil;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.entity.DelayMessage;
@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.DelayQueue;
 
 
@@ -61,31 +60,30 @@ public class QueueManagerController {
      */
     @GetMapping("get/base/queue/info")
     public Map<String, QueueInfo> getQueueInfo() {
-        // 遍历当前 server 的 queue info map ， 同时为其添加 kid 信息
-        for (Map.Entry<String, QueueInfo> entry : BrokerLocalCache.queueInfoMap.entrySet()) {
-            if (StringUtils.isBlank(entry.getValue().getKid())) {
-                entry.getValue().setKid(AdminServerCache.kid);
+
+            // 遍历当前 server 的 queue info map ， 同时为其添加 kid 信息
+            for (Map.Entry<String, QueueInfo> entry : BrokerLocalCache.queueInfoMap.entrySet()) {
+                if (StringUtils.isBlank(entry.getValue().getKid())) {
+                    entry.getValue().setKid(AdminServerCache.kid);
+                }
+
+                // 更新 offset size
+                QueueInfo queueInfo = entry.getValue();
+                if (queueInfo.getType().equals(QueueType.DELAY)) {
+                    DelayQueue<DelayMessage> delayQueue = BrokerLocalCache.delayQueueMap.get(queueInfo.getName());
+                    queueInfo.setAmount(null == delayQueue ? -1 : delayQueue.size());
+                } else {
+                    BlockingDeque<MQMessage.MQEntity> blockingDeque = BrokerLocalCache.queueMap.get(queueInfo.getName());
+                    queueInfo.setAmount(null == blockingDeque ? -1 : blockingDeque.size());
+                }
+                entry.setValue(queueInfo);
             }
-
-            // 更新 offset size
-            QueueInfo queueInfo = entry.getValue();
-            if (queueInfo.getType().equals(QueueType.DELAY)) {
-                DelayQueue<DelayMessage> delayQueue = BrokerLocalCache.delayQueueMap.get(queueInfo.getName());
-                queueInfo.setAmount(null == delayQueue ? -1 : delayQueue.size());
-            } else {
-                BlockingDeque<MQMessage.MQEntity> blockingDeque = BrokerLocalCache.queueMap.get(queueInfo.getName());
-                queueInfo.setAmount(null == blockingDeque ? -1 : blockingDeque.size());
-            }
-
-
-            entry.setValue(queueInfo);
-        }
-        return BrokerLocalCache.queueInfoMap;
+            return BrokerLocalCache.queueInfoMap;
     }
 
     @GetMapping("sync/data")
     public void syncQueueData() {
-        SyncDataUtils.syncClusterInfo();
+        SyncDataUtil.syncClusterInfo();
     }
 
 

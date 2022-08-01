@@ -1,5 +1,6 @@
 package com.krest.mq.admin.controller;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
@@ -9,7 +10,7 @@ import com.krest.mq.admin.schedule.DetectFollowerJob;
 import com.krest.mq.admin.schedule.DetectLeaderJob;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
 import com.krest.mq.admin.util.ClusterUtil;
-import com.krest.mq.admin.util.SyncDataUtils;
+import com.krest.mq.admin.util.SyncDataUtil;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.entity.*;
@@ -66,7 +67,7 @@ public class ClusterManagerController {
                         if (!AdminServerCache.isSelectServer) {
                             log.info("无法链接 leader, 开始重新选举 Leader");
                             ClusterUtil.initData();
-                            LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(SyncDataUtils.mqConfig));
+                            LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(SyncDataUtil.mqConfig));
                         }
                     }
                 } else {
@@ -83,14 +84,14 @@ public class ClusterManagerController {
         if (AdminServerCache.isSyncData && "-1".equals(isReadySyncData())) {
             return "-1";
         }
-        Map<String, JSONObject> mapStr = JSONObject.parseObject(queueInfoMapStr, HashMap.class);
+        Map<String, JSONObject> mapStr = JSON.parseObject(queueInfoMapStr, HashMap.class);
         Map<String, QueueInfo> targetQueueInfoMap = new HashMap<>();
         Iterator<Map.Entry<String, JSONObject>> iterator = mapStr.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<String, JSONObject> next = iterator.next();
             String queueName = next.getKey();
             JSONObject tempJsonObject = next.getValue();
-            QueueInfo queueInfo = SyncDataUtils.getQueueInfo(tempJsonObject);
+            QueueInfo queueInfo = SyncDataUtil.getQueueInfo(tempJsonObject);
             targetQueueInfoMap.put(queueName, queueInfo);
         }
         AdminServerCache.syncTargetQueueInfoMap = targetQueueInfoMap;
@@ -106,7 +107,7 @@ public class ClusterManagerController {
         if (AdminServerCache.isSyncData) {
             if (null != AdminServerCache.syncTargetQueueInfoMap
                     && AdminServerCache.syncTargetQueueInfoMap
-                    .equals(SyncDataUtils.getLocalQueueInfoMap())) {
+                    .equals(SyncDataUtil.getLocalQueueInfoMap())) {
                 AdminServerCache.isSyncData = false;
                 AdminServerCache.syncTargetQueueInfoMap = null;
                 return "1";
@@ -120,7 +121,7 @@ public class ClusterManagerController {
     @PostMapping("sync/cluster/info")
     public void syncClusterInfo(@RequestBody String requestStr) {
         // 同步 cluster 信息
-        AdminServerCache.clusterInfo = JSONObject.parseObject(requestStr, ClusterInfo.class);
+        AdminServerCache.clusterInfo.set(JSON.parseObject(requestStr, ClusterInfo.class));
 
         // 同步 offset 信息
         List<String> queueNames = new ArrayList<>();
@@ -134,7 +135,7 @@ public class ClusterManagerController {
         for (String queueName : queueNames) {
             // 缓存到本地中
             String offset = String.valueOf(
-                    AdminServerCache.clusterInfo
+                    AdminServerCache.clusterInfo.get()
                             .getQueueOffsetMap()
                             .getOrDefault(queueName, -1l)
             );
@@ -192,7 +193,7 @@ public class ClusterManagerController {
         }
 
         AdminServerCache.isSyncData = true;
-        toKid = JSONObject.parseObject(toKid, String.class);
+        toKid = JSON.parseObject(toKid, String.class);
         if (!StringUtils.isBlank(toKid) && toKid.equals(AdminServerCache.kid)) {
             return null;
         } else {
@@ -205,15 +206,11 @@ public class ClusterManagerController {
             }
 
             if (null != serverInfo) {
-
-                AdminServerCache.clusterInfo.getKidStatusMap().put(toKid, -1);
-
+                AdminServerCache.clusterInfo.get().getKidStatusMap().put(toKid, -1);
                 String targetHost = serverInfo.getAddress();
                 Integer port = serverInfo.getUdpPort();
-
                 // 找到需要同步的队列信息
-                Map<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = AdminServerCache.clusterInfo.getKidQueueInfo();
-
+                Map<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = AdminServerCache.clusterInfo.get().getKidQueueInfo();
                 ConcurrentHashMap<String, QueueInfo> fromQueueInfo = kidQueueInfo.get(AdminServerCache.kid);
                 Iterator<Map.Entry<String, QueueInfo>> iterator = fromQueueInfo.entrySet().iterator();
 
@@ -221,8 +218,7 @@ public class ClusterManagerController {
                     // 更新 cluster 数据
                     Map.Entry<String, QueueInfo> infoEntry = iterator.next();
                     QueueInfo queueInfo = infoEntry.getValue();
-                    SyncDataUtils.syncClusterInfo();
-                    ConcurrentHashMap<String, QueueInfo> toKidQueueInfo = AdminServerCache.clusterInfo.getKidQueueInfo().get(toKid);
+                    ConcurrentHashMap<String, QueueInfo> toKidQueueInfo = AdminServerCache.clusterInfo.get().getKidQueueInfo().get(toKid);
                     // 同步对方没有的队列内容
                     if (null == toKidQueueInfo || !toKidQueueInfo.containsKey(queueInfo.getName())) {
                         log.info("start sync [ {} ] msg from kid : [ {} ] to kid: [ {} ] ", queueInfo.getName(), AdminServerCache.kid, toKid);
@@ -345,7 +341,7 @@ public class ClusterManagerController {
 
     private void sendData(String targetHost, Integer port, QueueInfo queueInfo, Integer type) {
         MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
-                .setId(String.valueOf(AdminServerCache.clusterInfo.getQueueOffsetMap()
+                .setId(String.valueOf(AdminServerCache.clusterInfo.get().getQueueOffsetMap()
                         .get(queueInfo.getName())))
                 .setDateTime(DateUtils.getNowDate())
                 .setMsgType(2)
@@ -375,7 +371,7 @@ public class ClusterManagerController {
         int maxRelated = Integer.MIN_VALUE;
 
 
-        Map<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = AdminServerCache.clusterInfo.getKidQueueInfo();
+        Map<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = AdminServerCache.clusterInfo.get().getKidQueueInfo();
         Iterator<Map.Entry<String, ConcurrentHashMap<String, QueueInfo>>> kidQueueInfoIterator = kidQueueInfo.entrySet().iterator();
         while (kidQueueInfoIterator.hasNext()) {
             Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> next = kidQueueInfoIterator.next();
@@ -394,7 +390,7 @@ public class ClusterManagerController {
 
             // 不断更新 netty server
             if (relatedNum > maxRelated) {
-                for (ServerInfo curServer : AdminServerCache.clusterInfo.getCurServers()) {
+                for (ServerInfo curServer : AdminServerCache.clusterInfo.get().getCurServers()) {
                     if (curServer.getKid().equals(next.getKey())) {
                         nettyServer = curServer;
                     }
@@ -415,7 +411,7 @@ public class ClusterManagerController {
     }
 
     private ServerInfo getRandomNettyServer() {
-        List<ServerInfo> ans = new ArrayList<>(AdminServerCache.clusterInfo.getCurServers());
+        List<ServerInfo> ans = new ArrayList<>(AdminServerCache.clusterInfo.get().getCurServers());
         return ans.get(new Random().nextInt(ans.size()));
     }
 

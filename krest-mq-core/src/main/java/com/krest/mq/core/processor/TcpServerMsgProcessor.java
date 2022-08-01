@@ -1,24 +1,13 @@
 package com.krest.mq.core.processor;
 
-import com.google.protobuf.ProtocolStringList;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.BrokerLocalCache;
-import com.krest.mq.core.config.MQNormalConfig;
 import com.krest.mq.core.entity.MQMessage;
-import com.krest.mq.core.entity.QueueInfo;
-import com.krest.mq.core.enums.QueueType;
-import com.krest.mq.core.exeutor.LocalExecutor;
-import com.krest.mq.core.runnable.*;
 import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.MsgResolver;
 import com.krest.mq.core.utils.SyncUtil;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.*;
-import java.util.concurrent.DelayQueue;
-import java.util.concurrent.LinkedBlockingDeque;
 
 /**
  * 消息处理中心
@@ -62,8 +51,8 @@ public class TcpServerMsgProcessor {
         MsgResolver.handlerProducerMsg(mqEntity);
 
         // 将消息同步给其他的队列
-        if (null != AdminServerCache.clusterInfo.getCurServers()
-                && AdminServerCache.clusterInfo.getCurServers().size() > 1) {
+        if (null != AdminServerCache.clusterInfo.get().getCurServers()
+                && AdminServerCache.clusterInfo.get().getCurServers().size() > 1) {
             SyncUtil.msgToOtherServer(mqEntity);
         }
 

@@ -1,9 +1,8 @@
 package com.krest.mq.admin.balancer;
 
 import com.alibaba.fastjson.JSONObject;
-import com.krest.mq.admin.util.SyncDataUtils;
+import com.krest.mq.admin.util.SyncDataUtil;
 import com.krest.mq.core.cache.AdminServerCache;
-import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.entity.MqRequest;
 import com.krest.mq.core.entity.QueueInfo;
 import com.krest.mq.core.entity.ServerInfo;
@@ -17,8 +16,12 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class BrokerBalancer {
 
-    static String checkBrokerQueueInfoPath = "/queue/manager/get/base/queue/info";
-    static String clearHisDataPath = "/mq/manager/clear/overdue/data";
+    private BrokerBalancer() {
+    }
+
+    static final String CHECK_BROKER_QUEUE_INFO_PATH = "/queue/manager/get/base/queue/info";
+    static final String CLEAR_HIS_DATA_PATH = "/mq/manager/clear/overdue/data";
+    static final String HTTP_START_STR = "http://";
 
     public synchronized static void run() {
 
@@ -27,18 +30,18 @@ public class BrokerBalancer {
             return;
         }
 
-        if (AdminServerCache.clusterInfo.getCurServers().size() == 1) {
+        if (AdminServerCache.clusterInfo.get().getCurServers().size() == 1) {
             return;
         }
 
         AdminServerCache.isKidBalanced = true;
 
-        Integer duplicate = AdminServerCache.clusterInfo.getDuplicate();
-        if (duplicate > AdminServerCache.clusterInfo.getCurServers().size()) {
+        Integer duplicate = AdminServerCache.clusterInfo.get().getDuplicate();
+        if (duplicate > AdminServerCache.clusterInfo.get().getCurServers().size()) {
             log.error("config duplicate is : {} , but mq server number is : {}", duplicate,
-                    AdminServerCache.clusterInfo.getCurServers().size());
+                    AdminServerCache.clusterInfo.get().getCurServers().size());
             // 重设副本数量最大为集群的数量
-            duplicate = AdminServerCache.clusterInfo.getCurServers().size();
+            duplicate = AdminServerCache.clusterInfo.get().getCurServers().size();
         }
         // 开始同步数据
         doSyncData(duplicate);
@@ -48,45 +51,36 @@ public class BrokerBalancer {
 
     private static void doSyncData(Integer duplicate) {
         // 开始遍历记录的 queue 数量的列表
-        for (ServerInfo curServer : AdminServerCache.clusterInfo.getCurServers()) {
+        for (ServerInfo curServer : AdminServerCache.clusterInfo.get().getCurServers()) {
             if (checkBrokerQueueInfo(curServer)) {
                 // 清空原始数据
                 clearHisData(curServer);
                 // 同步集群的 queue 信息
-                SyncDataUtils.syncClusterInfo();
+                SyncDataUtil.syncClusterInfo();
             }
         }
         // 避免直接跳过了清理数据的地方
-        SyncDataUtils.syncClusterInfo();
-        Map<String, Integer> queueAmountMap = new HashMap<>(AdminServerCache.clusterInfo.getQueueAmountMap());
-//        Iterator<Map.Entry<String, Integer>> secQueueAmountIt = AdminServerCache.clusterInfo.getQueueAmountMap().entrySet().iterator();
-        Iterator<Map.Entry<String, Integer>> secQueueAmountIt = queueAmountMap.entrySet().iterator();
-        Map<String, String> kidRelationMap = new HashMap<>();
+        SyncDataUtil.syncClusterInfo();
+        Map<String, Integer> queueAmountMap = AdminServerCache.clusterInfo.get().getQueueAmountMap();
+        Iterator<Map.Entry<String, Integer>> queueAmountIt = queueAmountMap.entrySet().iterator();
+        Map<String, String> kidRelationMap = new ConcurrentHashMap<>();
 
-
-        while (null != secQueueAmountIt && secQueueAmountIt.hasNext()) {
-            Map.Entry<String, Integer> entry = secQueueAmountIt.next();
+        while (queueAmountIt.hasNext()) {
+            Map.Entry<String, Integer> entry = queueAmountIt.next();
             String queueName = entry.getKey();
-            Integer count = queueAmountMap.get(queueName);
-
+            Integer count = entry.getValue();
             // 第一种同步情况， 直接复制缺失的 queue 到对应的 kid
             if (count == null && duplicate == null) {
                 return;
             }
-
             if (count < duplicate) {
-                // 获取 from kid
                 String fromKid = getFromKid(queueName);
-
-                // 说明当前的 from kid 没有数据
                 if (StringUtils.isBlank(fromKid)) {
                     continue;
                 }
-
                 ServerInfo fromServer = AdminServerCache.kidServerMap.get(fromKid);
                 String toKid = getToKid(fromKid);
 
-                // 如果当前的 to kid 没有数据
                 if (StringUtils.isBlank(toKid)) {
                     continue;
                 }
@@ -99,27 +93,26 @@ public class BrokerBalancer {
                     kidRelationMap.put(fromKid, toKid);
                 }
 
-
                 ServerInfo toKidServerInfo = AdminServerCache.kidServerMap.get(toKid);
 
-                // 检查目标 Server 的状态
-                String checkStatusTargetUrl = "http://" + toKidServerInfo.getTargetAddress() + "/mq/manager/check/status";
+                // 检查 to kid 的 server 是否正在同步数据
+                String checkStatusTargetUrl = HTTP_START_STR + toKidServerInfo.getTargetAddress() + "/mq/manager/check/status";
                 MqRequest checkRequest = new MqRequest(checkStatusTargetUrl, null);
                 String checkResponse = HttpUtil.postRequest(checkRequest);
 
-                // 1 代表 当前 server 可以 同步数据
+                // 1 代表 to kid server 可以 同步数据， 修改目标 server 的状态为同步数据中
                 if ("1".equals(checkResponse)) {
 
-                    // 改变 toKid 的状态为 sync data ing
-                    ConcurrentHashMap<String, QueueInfo> queueInfoMap = AdminServerCache.clusterInfo.getKidQueueInfo().get(toKid);
-                    String changeStatusTargetUrl = "http://" + toKidServerInfo.getTargetAddress() + "/mq/manager/change/kid/status";
+                    // 改变 toKid 的状态为 sync data 中
+                    ConcurrentHashMap<String, QueueInfo> queueInfoMap = AdminServerCache.clusterInfo.get().getKidQueueInfo().get(toKid);
+                    String changeStatusTargetUrl = HTTP_START_STR + toKidServerInfo.getTargetAddress() + "/mq/manager/change/kid/status";
                     MqRequest request = new MqRequest(changeStatusTargetUrl, queueInfoMap);
                     String changeStatusResp = HttpUtil.postRequest(request);
 
-                    // 如果该表成功， 开始同步数据
+                    // 修改状态成功， 开始同步数据
                     if ("1".equals(changeStatusResp)) {
                         // 开始发送同步数据的请求
-                        String targetUrl = "http://" + fromServer.getTargetAddress() + "/mq/manager/sync/all/queue";
+                        String targetUrl = HTTP_START_STR + fromServer.getTargetAddress() + "/mq/manager/sync/all/queue";
                         MqRequest toKidRequest = new MqRequest(targetUrl, toKid);
                         HttpUtil.postRequest(toKidRequest);
                     }
@@ -132,11 +125,11 @@ public class BrokerBalancer {
      * 获取与 from kid 中 queue 相似度最高的 to kid;
      */
     private static String getToKid(String fromKid) {
-        ConcurrentHashMap<String, QueueInfo> fromKidQueueInfoMag = AdminServerCache.clusterInfo.getKidQueueInfo().get(fromKid);
+        ConcurrentHashMap<String, QueueInfo> fromKidQueueInfoMag = AdminServerCache.clusterInfo.get().getKidQueueInfo().get(fromKid);
         String toKid = null;
         int maxRelate = Integer.MIN_VALUE;
 
-        for (Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> curQueueInfo : AdminServerCache.clusterInfo.getKidQueueInfo().entrySet()) {
+        for (Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> curQueueInfo : AdminServerCache.clusterInfo.get().getKidQueueInfo().entrySet()) {
             ConcurrentHashMap<String, QueueInfo> queueInfoMap = curQueueInfo.getValue();
             String kid = curQueueInfo.getKey();
 
@@ -161,12 +154,12 @@ public class BrokerBalancer {
     }
 
     private static String getFromKid(String queueName) {
-        return AdminServerCache.clusterInfo.getQueueLatestKid().get(queueName);
+        return AdminServerCache.clusterInfo.get().getQueueLatestKid().get(queueName);
     }
 
 
     private static boolean checkBrokerQueueInfo(ServerInfo serverInfo) {
-        String targetUrl = "http://" + serverInfo.getTargetAddress() + checkBrokerQueueInfoPath;
+        String targetUrl = HTTP_START_STR + serverInfo.getTargetAddress() + CHECK_BROKER_QUEUE_INFO_PATH;
         MqRequest request = new MqRequest(targetUrl, null);
 
         ConcurrentHashMap<String, JSONObject> queueInfoStrMap = HttpUtil.getQueueInfo(request);
@@ -177,24 +170,23 @@ public class BrokerBalancer {
             while (iterator.hasNext()) {
                 Map.Entry<String, JSONObject> mapEntry = iterator.next();
                 QueueInfo tempQueueInfo = mapEntry.getValue().toJavaObject(QueueInfo.class);
-
                 String queueName = tempQueueInfo.getName();
                 // 判断值是否存在，不存在给定默认值
                 Long tempOffset = Long.valueOf(
-                        tempQueueInfo.getOffset() == null
+                        null == tempQueueInfo.getOffset()
                                 ? "-1L" : tempQueueInfo.getOffset()
                 );
 
-                Integer tempSize = tempQueueInfo.getAmount() == null
+                Integer tempSize = null == tempQueueInfo.getAmount()
                         ? -1 : tempQueueInfo.getAmount();
 
                 // 检查 offset 和 amount, 如果 offset 和 amount 有一处不一致，那么就删除
                 Long offset = Long.valueOf(
-                        AdminServerCache.clusterInfo.getQueueOffsetMap().get(queueName) == null
-                                ? -1 : AdminServerCache.clusterInfo.getQueueOffsetMap().get(queueName)
+                        AdminServerCache.clusterInfo.get().getQueueOffsetMap().get(queueName) == null
+                                ? -1 : AdminServerCache.clusterInfo.get().getQueueOffsetMap().get(queueName)
                 );
-                Integer size = AdminServerCache.clusterInfo.getQueueSizeMap().get(queueName) == null
-                        ? -1 : AdminServerCache.clusterInfo.getQueueSizeMap().get(queueName);
+                Integer size = AdminServerCache.clusterInfo.get().getQueueSizeMap().get(queueName) == null
+                        ? -1 : AdminServerCache.clusterInfo.get().getQueueSizeMap().get(queueName);
 
 
                 // 如果 集群的偏移量 大于 新注册的 broker, 说明 broker 的数据是旧的， 执行删除
@@ -208,9 +200,9 @@ public class BrokerBalancer {
                 }
 
                 // 判断 queue 在 cluster 中数量是否超过了 最大副本数
-                Integer amount = AdminServerCache.clusterInfo.getQueueAmountMap()
+                Integer amount = AdminServerCache.clusterInfo.get().getQueueAmountMap()
                         .getOrDefault(queueName, 0);
-                if (amount > AdminServerCache.clusterInfo.getDuplicate() && !isInUse(serverInfo)) {
+                if (amount > AdminServerCache.clusterInfo.get().getDuplicate() && !isInUse(serverInfo)) {
                     return true;
                 }
             }
@@ -219,7 +211,7 @@ public class BrokerBalancer {
     }
 
     private static boolean isInUse(ServerInfo serverInfo) {
-        String targetUrl = "http://" + serverInfo.getTargetAddress() + "/queue/manager/check/in/use";
+        String targetUrl = HTTP_START_STR + serverInfo.getTargetAddress() + "/queue/manager/check/in/use";
         MqRequest request = new MqRequest(targetUrl, null);
         String respStr = HttpUtil.isServerInUse(request);
         if (!StringUtils.isBlank(respStr) && "1".equals(respStr)) {
@@ -230,7 +222,7 @@ public class BrokerBalancer {
 
 
     private static void clearHisData(ServerInfo serverInfo) {
-        String targetUrl = "http:\\" + serverInfo.getTargetAddress() + clearHisDataPath;
+        String targetUrl = HTTP_START_STR + serverInfo.getTargetAddress() + CLEAR_HIS_DATA_PATH;
         MqRequest request = new MqRequest(targetUrl, null);
         HttpUtil.postRequest(request);
     }

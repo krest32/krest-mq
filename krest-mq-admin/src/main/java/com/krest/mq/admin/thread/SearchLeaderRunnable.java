@@ -68,7 +68,7 @@ public class SearchLeaderRunnable implements Runnable {
             }
         }
 
-        AdminServerCache.clusterInfo.getCurServers().clear();
+        AdminServerCache.clusterInfo.get().getCurServers().clear();
 
         // 遍历所有的信息
         for (int i = 0; i < this.mqConfig.getServerList().size(); i++) {
@@ -76,7 +76,7 @@ public class SearchLeaderRunnable implements Runnable {
 
             // 跳过自己
             if (curServerInfo.getKid().equals(AdminServerCache.kid)) {
-                AdminServerCache.clusterInfo.getCurServers().add(curServerInfo);
+                AdminServerCache.clusterInfo.get().getCurServers().add(curServerInfo);
                 continue;
             }
 
@@ -87,13 +87,13 @@ public class SearchLeaderRunnable implements Runnable {
 
             // 接口返回 null, 说明集群正在选举
             if (StringUtils.isBlank(responseStr)) {
-                AdminServerCache.clusterInfo.getCurServers().add(curServerInfo);
+                AdminServerCache.clusterInfo.get().getCurServers().add(curServerInfo);
                 continue;
             }
             // 接口返回 leader 信息
             if (!"error".equals(responseStr)) {
                 ServerInfo tempServer = JSONObject.parseObject(responseStr, ServerInfo.class);
-                AdminServerCache.clusterInfo.getCurServers().add(curServerInfo);
+                AdminServerCache.clusterInfo.get().getCurServers().add(curServerInfo);
 
                 // 检查返回的信息
                 boolean flag = ClusterUtil.detectLeader(
@@ -129,7 +129,7 @@ public class SearchLeaderRunnable implements Runnable {
 
             log.info("start select leader...");
             // 转化为 list, 同时根据 kid 降序排序
-            List<ServerInfo> curServers = new ArrayList<>(AdminServerCache.clusterInfo.getCurServers());
+            List<ServerInfo> curServers = new ArrayList<>(AdminServerCache.clusterInfo.get().getCurServers());
             curServers.sort((o1, o2) ->
                     Integer.valueOf(o2.getKid()).compareTo(Integer.valueOf(o1.getKid()))
             );

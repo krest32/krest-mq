@@ -4,10 +4,10 @@ import com.krest.mq.core.entity.*;
 import com.krest.mq.core.enums.ClusterRole;
 import com.krest.mq.core.handler.UdpRespFutureHandler;
 import com.krest.mq.core.server.MQUDPServer;
-import io.netty.channel.Channel;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class AdminServerCache {
 
@@ -52,8 +52,10 @@ public class AdminServerCache {
     public static Map<String, DelayQueue<DelayMessage>> syncDelayQueueMap = new ConcurrentHashMap<>();
 
 
-    // 记录的 Cluster 信息
-    public volatile static ClusterInfo clusterInfo = new ClusterInfo();
+    /**
+     * 记录的 Cluster 信息
+     */
+    public final static AtomicReference<ClusterInfo> clusterInfo = new AtomicReference<>(new ClusterInfo());
     public static MQUDPServer mqudpServer;
     public static ServerInfo selectedServer;
 

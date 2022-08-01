@@ -113,7 +113,6 @@ public class MsgResolver {
         Map<String, Integer> queueInfoMap = request.getQueueInfoMap();
         Iterator<Map.Entry<String, Integer>> iterator = queueInfoMap.entrySet().iterator();
         List<String> queueNameList = new ArrayList<>();
-
         while (iterator.hasNext()) {
             Map.Entry<String, Integer> queueInfo = iterator.next();
             String queueName = queueInfo.getKey();
@@ -129,7 +128,6 @@ public class MsgResolver {
             BrokerLocalCache.queueInfoMap.put(queueName, getQueueInfo(queueName, val, request.getId()));
             // 如果不存在队列 就进行创建queue, 并开启监听
             if (BrokerLocalCache.queueInfoMap.get(queueName).getType().equals(QueueType.DELAY)) {
-
                 if (BrokerLocalCache.queueMap.get(queueName) != null) {
                     log.error(queueName + ": 定义为延时队列，但是存在普通队列的 ");
                 }
@@ -139,9 +137,7 @@ public class MsgResolver {
                     BrokerLocalCache.delayQueueMap.put(queueName, new DelayQueue<>());
                 }
                 LocalExecutor.TcpDelayExecutor.execute(new MsgDelaySendRunnable(queueName));
-
             } else {
-
                 if (BrokerLocalCache.queueMap.get(queueName) == null) {
                     // 新建普通队列
                     log.info("new normal queue : {}", queueName);

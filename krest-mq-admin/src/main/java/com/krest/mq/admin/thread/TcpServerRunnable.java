@@ -1,13 +1,16 @@
 package com.krest.mq.admin.thread;
 
 import com.krest.mq.core.server.MQTCPServer;
-import org.springframework.stereotype.Component;
 
-public class TCPServerRunnable implements Runnable {
+
+/**
+ * @author Administrator
+ */
+public class TcpServerRunnable implements Runnable {
 
     Integer port;
 
-    public TCPServerRunnable(Integer port) {
+    public TcpServerRunnable(Integer port) {
         this.port = port;
     }
 

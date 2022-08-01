@@ -1,6 +1,5 @@
 package com.krest.mq.core.utils;
 
-import com.google.gson.JsonParser;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ProtocolStringList;
 import com.google.protobuf.util.JsonFormat;
@@ -14,7 +13,6 @@ import com.krest.mq.core.entity.ServerInfo;
 import com.krest.mq.core.entity.SyncInfo;
 import lombok.extern.slf4j.Slf4j;
 
-import javax.swing.text.TabableView;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -35,7 +33,7 @@ public class SyncUtil {
     public static void msgToOtherServer(MQMessage.MQEntity mqEntity) {
         ProtocolStringList queueList = mqEntity.getQueueList();
         for (String queueName : queueList) {
-            Set<ServerInfo> serverInfoSet = AdminServerCache.clusterInfo.getQueuePacketMap().get(queueName);
+            Set<ServerInfo> serverInfoSet = AdminServerCache.clusterInfo.get().getQueuePacketMap().get(queueName);
             if (null != serverInfoSet
                     && null != AdminServerCache.mqudpServer
                     && serverInfoSet.size() > 0) {
@@ -54,7 +52,7 @@ public class SyncUtil {
      * 释放消息到其他 sever
      */
     public static void msgReleaseToOtherSever(String queueName, MQMessage.MQEntity mqEntity) {
-        Set<ServerInfo> serverInfoSet = AdminServerCache.clusterInfo.getQueuePacketMap().get(queueName);
+        Set<ServerInfo> serverInfoSet = AdminServerCache.clusterInfo.get().getQueuePacketMap().get(queueName);
         if (null != serverInfoSet && !serverInfoSet.isEmpty()) {
             for (ServerInfo serverInfo : serverInfoSet) {
                 if (!serverInfo.getKid().equals(AdminServerCache.kid)) {
