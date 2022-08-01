@@ -4,14 +4,12 @@ import com.alibaba.fastjson.JSONObject;
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.cache.BrokerLocalCache;
-import com.krest.mq.core.entity.ClusterInfo;
-import com.krest.mq.core.entity.MqRequest;
-import com.krest.mq.core.entity.QueueInfo;
-import com.krest.mq.core.entity.ServerInfo;
+import com.krest.mq.core.entity.*;
 import com.krest.mq.core.enums.ClusterRole;
 import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.core.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -29,6 +27,7 @@ public class SyncDataUtil {
     public static MqConfig mqConfig;
     static final String GET_BASE_QUEUE_INFO = "/queue/manager/get/base/queue/info";
     static final String SYNC_CLUSTER_INFO = "/mq/manager/sync/cluster/info";
+    static final String CHECK_KID_STATUS = "/mq/manager/check/kid/status";
 
     /**
      * 1. 清空新注册节点的数据
@@ -68,12 +67,22 @@ public class SyncDataUtil {
         clusterInfo.getQueueSizeMap().clear();
         clusterInfo.getKidQueueInfo().clear();
         clusterInfo.getQueuePacketMap().clear();
+        clusterInfo.getKidStatusMap().clear();
 
         for (ServerInfo curServer : clusterInfo.getCurServers()) {
             // 获取 queue info Map
             String targetUrl = "http://" + curServer.getTargetAddress() + GET_BASE_QUEUE_INFO;
             MqRequest request = new MqRequest(targetUrl, null);
             ConcurrentHashMap<String, JSONObject> queueInfoStrMap = HttpUtil.getQueueInfo(request);
+
+            // 设置 kid 的工作状态
+            String checkKidUrl = "http://" + curServer.getTargetAddress() + CHECK_KID_STATUS;
+            MqRequest checkKidStatusRequest = new MqRequest(checkKidUrl, null);
+            String kidStatusResp = HttpUtil.postRequest(checkKidStatusRequest);
+            if (!StringUtils.isBlank(kidStatusResp)) {
+                clusterInfo.getKidStatusMap().put(
+                        curServer.getKid(), kidStatusResp.equals("1") ? 1 : -1);
+            }
 
             // 表示无法链接，那么就移除改 server
             if (null == queueInfoStrMap) {

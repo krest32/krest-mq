@@ -8,6 +8,7 @@ import com.krest.file.util.FileWriterUtils;
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.admin.schedule.DetectFollowerJob;
 import com.krest.mq.admin.schedule.DetectLeaderJob;
+import com.krest.mq.admin.thread.CheckSyncDataRunnable;
 import com.krest.mq.admin.thread.SearchLeaderRunnable;
 import com.krest.mq.admin.util.ClusterUtil;
 import com.krest.mq.admin.util.SyncDataUtil;
@@ -81,7 +82,8 @@ public class ClusterManagerController {
 
     @PostMapping("change/kid/status")
     public String changeKidStatus(@RequestBody String queueInfoMapStr) {
-        if (AdminServerCache.isSyncData && "-1".equals(isReadySyncData())) {
+        System.out.println(queueInfoMapStr);
+        if (AdminServerCache.isSyncData) {
             return "-1";
         }
         Map<String, JSONObject> mapStr = JSON.parseObject(queueInfoMapStr, HashMap.class);
@@ -95,23 +97,30 @@ public class ClusterManagerController {
             targetQueueInfoMap.put(queueName, queueInfo);
         }
         AdminServerCache.syncTargetQueueInfoMap = targetQueueInfoMap;
+        // 开启线程监控 数据同步的情况
+        LocalExecutor.NormalUseExecutor.execute(new CheckSyncDataRunnable());
         return "1";
     }
 
 
+    @PostMapping("notify/leader/sync/data/finish")
+    public String notifyLeaderSyncDataFinish(@RequestBody String kid) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+            AdminServerCache.clusterInfo.get().getKidStatusMap().put(kid, 1);
+            return "1";
+        }
+        return "-1";
+    }
+
+
     /**
-     * 检查当前 Server 的状态
+     * 检查当前 Server 的状态， 是否能够正常工作或者传输数据
      */
-    @PostMapping("check/status")
+    @PostMapping("check/kid/status")
     public String isReadySyncData() {
-        if (AdminServerCache.isSyncData) {
-            if (null != AdminServerCache.syncTargetQueueInfoMap
-                    && AdminServerCache.syncTargetQueueInfoMap
-                    .equals(SyncDataUtil.getLocalQueueInfoMap())) {
-                AdminServerCache.isSyncData = false;
-                AdminServerCache.syncTargetQueueInfoMap = null;
-                return "1";
-            }
+        if (null == AdminServerCache.leaderInfo
+                || AdminServerCache.isSelectServer
+                || AdminServerCache.isSyncData) {
             return "-1";
         }
         return "1";

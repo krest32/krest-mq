@@ -10,7 +10,8 @@ import com.krest.mq.core.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -19,9 +20,12 @@ public class BrokerBalancer {
     private BrokerBalancer() {
     }
 
+    static final String HTTP_START_STR = "http://";
     static final String CHECK_BROKER_QUEUE_INFO_PATH = "/queue/manager/get/base/queue/info";
     static final String CLEAR_HIS_DATA_PATH = "/mq/manager/clear/overdue/data";
-    static final String HTTP_START_STR = "http://";
+    static final String CHECK_SERVER_STATUS = "/mq/manager/check/kid/status";
+    static final String CHANGE_SERVER_STATUS = "/mq/manager/change/kid/status";
+    static final String SYNC_DATA_PATH = "/mq/manager/sync/all/queue";
 
     public synchronized static void run() {
 
@@ -44,23 +48,20 @@ public class BrokerBalancer {
             duplicate = AdminServerCache.clusterInfo.get().getCurServers().size();
         }
         // 开始同步数据
-        doSyncData(duplicate);
+        syncData(duplicate);
 
         AdminServerCache.isKidBalanced = false;
     }
 
+    private static void syncData(Integer duplicate) {
+
+        prepareJob();
+
+        doSyncData(duplicate);
+    }
+
     private static void doSyncData(Integer duplicate) {
-        // 开始遍历记录的 queue 数量的列表
-        for (ServerInfo curServer : AdminServerCache.clusterInfo.get().getCurServers()) {
-            if (checkBrokerQueueInfo(curServer)) {
-                // 清空原始数据
-                clearHisData(curServer);
-                // 同步集群的 queue 信息
-                SyncDataUtil.syncClusterInfo();
-            }
-        }
-        // 避免直接跳过了清理数据的地方
-        SyncDataUtil.syncClusterInfo();
+
         Map<String, Integer> queueAmountMap = AdminServerCache.clusterInfo.get().getQueueAmountMap();
         Iterator<Map.Entry<String, Integer>> queueAmountIt = queueAmountMap.entrySet().iterator();
         Map<String, String> kidRelationMap = new ConcurrentHashMap<>();
@@ -73,52 +74,75 @@ public class BrokerBalancer {
             if (count == null && duplicate == null) {
                 return;
             }
+
             if (count < duplicate) {
+
+                // 检查 from kid
                 String fromKid = getFromKid(queueName);
                 if (StringUtils.isBlank(fromKid)) {
                     continue;
                 }
+
+                // 检查 to kid
                 ServerInfo fromServer = AdminServerCache.kidServerMap.get(fromKid);
                 String toKid = getToKid(fromKid);
-
                 if (StringUtils.isBlank(toKid)) {
                     continue;
                 }
 
-                // 如果当前的 from kid 与 to kid 已经匹配过一次
                 if (kidRelationMap.containsKey(fromKid)
                         && kidRelationMap.get(fromKid).equals(toKid)) {
                     continue;
-                } else {
-                    kidRelationMap.put(fromKid, toKid);
                 }
+
 
                 ServerInfo toKidServerInfo = AdminServerCache.kidServerMap.get(toKid);
 
-                // 检查 to kid 的 server 是否正在同步数据
-                String checkStatusTargetUrl = HTTP_START_STR + toKidServerInfo.getTargetAddress() + "/mq/manager/check/status";
-                MqRequest checkRequest = new MqRequest(checkStatusTargetUrl, null);
-                String checkResponse = HttpUtil.postRequest(checkRequest);
+                // 检查 to kid 与 from kid 的 server 状态
+                String toKidServerStatusUrl = HTTP_START_STR + toKidServerInfo.getTargetAddress() + CHECK_SERVER_STATUS;
+                MqRequest toKidServerRequest = new MqRequest(toKidServerStatusUrl, null);
+                String toKidStatus = HttpUtil.postRequest(toKidServerRequest);
 
-                // 1 代表 to kid server 可以 同步数据， 修改目标 server 的状态为同步数据中
-                if ("1".equals(checkResponse)) {
+                String fromKidServerStatusUrl = HTTP_START_STR + fromServer.getTargetAddress() + CHECK_SERVER_STATUS;
+                MqRequest fromKidServerRequest = new MqRequest(fromKidServerStatusUrl, null);
+                String fromKidStatus = HttpUtil.postRequest(fromKidServerRequest);
 
+                // 开始真正的同步数据工作
+                if ("1".equals(toKidStatus) && "1".equals(fromKidStatus)) {
                     // 改变 toKid 的状态为 sync data 中
-                    ConcurrentHashMap<String, QueueInfo> queueInfoMap = AdminServerCache.clusterInfo.get().getKidQueueInfo().get(toKid);
-                    String changeStatusTargetUrl = HTTP_START_STR + toKidServerInfo.getTargetAddress() + "/mq/manager/change/kid/status";
+                    ConcurrentHashMap<String, QueueInfo> queueInfoMap = AdminServerCache.clusterInfo.get().getKidQueueInfo().get(fromKid);
+                    String changeStatusTargetUrl = HTTP_START_STR + toKidServerInfo.getTargetAddress() + CHANGE_SERVER_STATUS;
                     MqRequest request = new MqRequest(changeStatusTargetUrl, queueInfoMap);
                     String changeStatusResp = HttpUtil.postRequest(request);
 
-                    // 修改状态成功， 开始同步数据
                     if ("1".equals(changeStatusResp)) {
+                        // 修改目标 server 的状态
+                        AdminServerCache.clusterInfo.get().getKidStatusMap().put(toKid, -1);
+                        kidRelationMap.put(fromKid, toKid);
+
                         // 开始发送同步数据的请求
-                        String targetUrl = HTTP_START_STR + fromServer.getTargetAddress() + "/mq/manager/sync/all/queue";
+                        String targetUrl = HTTP_START_STR + fromServer.getTargetAddress() + SYNC_DATA_PATH;
                         MqRequest toKidRequest = new MqRequest(targetUrl, toKid);
                         HttpUtil.postRequest(toKidRequest);
                     }
                 }
             }
         }
+    }
+
+
+    private static void prepareJob() {
+        // 开始遍历记录的 queue 数量的列表
+        for (ServerInfo curServer : AdminServerCache.clusterInfo.get().getCurServers()) {
+            if (checkBrokerQueueInfo(curServer)) {
+                // 清空原始数据
+                clearHisData(curServer);
+                // 同步集群的 queue 信息
+                SyncDataUtil.syncClusterInfo();
+            }
+        }
+        // 避免直接跳过了清理数据的地方
+        SyncDataUtil.syncClusterInfo();
     }
 
     /**

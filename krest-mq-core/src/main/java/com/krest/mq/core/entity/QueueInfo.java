@@ -31,17 +31,4 @@ public class QueueInfo implements Serializable {
 
     // 记录当前 queue 的数据量
     Integer amount;
-
-    public Integer getAmount() {
-        if (!StringUtils.isBlank(kid) && kid.equals(AdminServerCache.kid)) {
-            if (null != type && BrokerLocalCache.queueMap.get(name) != null) {
-                if (type.equals(QueueType.DELAY)) {
-                    return BrokerLocalCache.delayQueueMap.get(name).size();
-                } else {
-                    return BrokerLocalCache.queueMap.get(name).size();
-                }
-            }
-        }
-        return amount;
-    }
 }
