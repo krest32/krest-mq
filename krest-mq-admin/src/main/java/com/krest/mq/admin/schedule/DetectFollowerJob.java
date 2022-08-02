@@ -27,7 +27,7 @@ public class DetectFollowerJob {
                     || AdminServerCache.isSyncClusterInfo) {
                 return;
             }
-            AdminServerCache.isDetectFollower = true;
+
             log.info("start detect follower at : " + DateUtils.getNowDate());
             Iterator<ServerInfo> iterator = AdminServerCache.clusterInfo.get()
                     .getCurServers().iterator();
@@ -36,6 +36,8 @@ public class DetectFollowerJob {
                 boolean flag = ClusterUtil.detectFollower(curServer.getTargetAddress(),
                         AdminServerCache.leaderInfo);
                 if (!flag) {
+                    // 如果检测过程中发现异常，那么既不能进行 balancer 工作
+                    AdminServerCache.isDetectFollower = true;
                     int tryCnt = 1;
                     while (tryCnt < 3) {
                         boolean reFlag = ClusterUtil.detectFollower(curServer.getTargetAddress(),

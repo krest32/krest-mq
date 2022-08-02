@@ -48,6 +48,7 @@ public class MQTCPClient {
             log.info("try to reconnect to the server.");
             channel = null;
             do {
+
                 ConnectUtil.mqLeader = ConnectUtil.getLeaderInfo(ConnectUtil.mqConfig);
 
                 while (ConnectUtil.mqLeader == null) {
@@ -58,10 +59,12 @@ public class MQTCPClient {
                 while (serverInfo == null) {
                     while (ConnectUtil.mqLeader == null) {
                         log.info("wait 3s to get mq server");
+                        Thread.sleep(3 * 1000);
                         ConnectUtil.mqLeader = ConnectUtil.getLeaderInfo(ConnectUtil.mqConfig);
                     }
-                    log.info("wait 3s to get netty server");
                     serverInfo = ConnectUtil.getNettyServerInfo(ConnectUtil.mqLeader, mqEntity);
+                    log.info("wait 3s to get netty server");
+                    Thread.sleep(3 * 1000);
                 }
                 channel = MQUtils.tryConnect(bootstrap, serverInfo.getAddress(), serverInfo.getTcpPort());
             }
