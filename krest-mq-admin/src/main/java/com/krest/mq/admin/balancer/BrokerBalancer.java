@@ -183,6 +183,7 @@ public class BrokerBalancer {
 
 
     private static boolean checkBrokerQueueInfo(ServerInfo serverInfo) {
+
         String targetUrl = HTTP_START_STR + serverInfo.getTargetAddress() + CHECK_BROKER_QUEUE_INFO_PATH;
         MqRequest request = new MqRequest(targetUrl, null);
 
@@ -190,14 +191,13 @@ public class BrokerBalancer {
         if (null != queueInfoStrMap) {
             // 更新 queue 的最新 offset
             Iterator<Map.Entry<String, JSONObject>> iterator = queueInfoStrMap.entrySet().iterator();
-
             while (iterator.hasNext()) {
                 Map.Entry<String, JSONObject> mapEntry = iterator.next();
                 QueueInfo tempQueueInfo = mapEntry.getValue().toJavaObject(QueueInfo.class);
                 String queueName = tempQueueInfo.getName();
                 // 判断值是否存在，不存在给定默认值
                 Long tempOffset = Long.valueOf(
-                        null == tempQueueInfo.getOffset()
+                        (StringUtils.isBlank(tempQueueInfo.getOffset()))
                                 ? "-1L" : tempQueueInfo.getOffset()
                 );
 

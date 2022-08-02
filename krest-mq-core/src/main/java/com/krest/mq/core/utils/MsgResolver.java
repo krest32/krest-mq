@@ -124,8 +124,10 @@ public class MsgResolver {
                 channels.add(ctx.channel());
                 BrokerLocalCache.queueCtxListMap.put(queueName, channels);
             }
-            // 开始创建消息队列
+
+            // 开始创建消息队列信息
             BrokerLocalCache.queueInfoMap.put(queueName, getQueueInfo(queueName, val, request.getId()));
+
             // 如果不存在队列 就进行创建queue, 并开启监听
             if (BrokerLocalCache.queueInfoMap.get(queueName).getType().equals(QueueType.DELAY)) {
                 if (BrokerLocalCache.queueMap.get(queueName) != null) {

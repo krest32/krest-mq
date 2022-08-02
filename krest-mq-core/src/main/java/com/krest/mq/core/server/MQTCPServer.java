@@ -34,7 +34,6 @@ public class MQTCPServer {
     NioEventLoopGroup bossGroup;
     NioEventLoopGroup workGroup;
     Channel channel;
-    // 当前会启动 tcp 与 udp 两个 server
     Integer port;
 
     private MQTCPServer() {

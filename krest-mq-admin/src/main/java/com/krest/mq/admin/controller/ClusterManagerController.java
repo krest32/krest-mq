@@ -75,14 +75,12 @@ public class ClusterManagerController {
                     return AdminServerCache.leaderInfo;
                 }
             }
-
         }
         return null;
     }
 
     @PostMapping("change/kid/status")
     public String changeKidStatus(@RequestBody String queueInfoMapStr) {
-        System.out.println(queueInfoMapStr);
         if (AdminServerCache.isSyncData) {
             return "-1";
         }
@@ -131,26 +129,6 @@ public class ClusterManagerController {
     public void syncClusterInfo(@RequestBody String requestStr) {
         // 同步 cluster 信息
         AdminServerCache.clusterInfo.set(JSON.parseObject(requestStr, ClusterInfo.class));
-
-        // 同步 offset 信息
-        List<String> queueNames = new ArrayList<>();
-        Iterator<Map.Entry<String, QueueInfo>> iterator = BrokerLocalCache.queueInfoMap.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<String, QueueInfo> next = iterator.next();
-            queueNames.add(next.getKey());
-        }
-
-        // 设置 offset
-        for (String queueName : queueNames) {
-            // 缓存到本地中
-            String offset = String.valueOf(
-                    AdminServerCache.clusterInfo.get()
-                            .getQueueOffsetMap()
-                            .getOrDefault(queueName, -1l)
-            );
-
-            SyncUtil.saveQueueInfoMap(queueName, offset);
-        }
     }
 
     /**
@@ -158,21 +136,24 @@ public class ClusterManagerController {
      */
     @PostMapping("get/netty/server/info")
     public ServerInfo getServerInfo(@RequestBody String reqStr) throws InvalidProtocolBufferException {
+        // 检测活着的 follower
         detectFollowerJob.detectFollower();
 
         MQMessage.MQEntity.Builder tempBuilder = MQMessage.MQEntity.newBuilder();
         JsonFormat.parser().merge(reqStr, tempBuilder);
         MQMessage.MQEntity mqEntity = tempBuilder.build();
 
-        // 如果是Leader，那么就直接随机返回一个 MQ server 地址
+        // 如果是Leader，那么就直接返回一个 MQ server 地址
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
             ServerInfo nettyServer = getNettyServer(mqEntity);
             return nettyServer;
         }
+
         // 如果是 follower，同样请求 Leader 完成
         if (AdminServerCache.clusterRole.equals(ClusterRole.Follower)) {
             return requestLeader(reqStr);
         }
+
         // 如果是 observer，那么就返回 null
         return null;
     }
@@ -350,18 +331,19 @@ public class ClusterManagerController {
 
     private void sendData(String targetHost, Integer port, QueueInfo queueInfo, Integer type) {
         MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
-                .setId(String.valueOf(AdminServerCache.clusterInfo.get().getQueueOffsetMap()
-                        .get(queueInfo.getName())))
+                .setId(String.valueOf(AdminServerCache.clusterInfo.get().getQueueOffsetMap().get(queueInfo.getName())))
                 .setDateTime(DateUtils.getNowDate())
                 .setMsgType(2)
                 .setIsAck(true)
                 .putQueueInfo(queueInfo.getName(), type)
                 .build();
+
+        // 先新建队列
         AdminServerCache.mqudpServer.sendMsg(targetHost, port, mqEntity);
+
         // 开始同步信息
         if (queueInfo.getType().equals(QueueType.DELAY)) {
             // 取出延时队列的信息
-
             DelayQueue<DelayMessage> delayMessages = getDelayQueue(queueInfo.getName());
             while (null != delayMessages && !delayMessages.isEmpty()) {
                 AdminServerCache.mqudpServer.sendMsg(targetHost, port,
@@ -375,13 +357,20 @@ public class ClusterManagerController {
         }
     }
 
+    /**
+     * 获取一个 netty server 地址
+     * 1. 队列相关度最高
+     * 2. 是最新的 kid
+     */
     private ServerInfo doGetNettyServer(MQMessage.MQEntity mqEntity) {
-        ServerInfo nettyServer = null;
         int maxRelated = Integer.MIN_VALUE;
-
 
         Map<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = AdminServerCache.clusterInfo.get().getKidQueueInfo();
         Iterator<Map.Entry<String, ConcurrentHashMap<String, QueueInfo>>> kidQueueInfoIterator = kidQueueInfo.entrySet().iterator();
+
+        List<ServerInfo> nettyServers = new ArrayList<>();
+        Map<String, Integer> queueRelatedMap = new HashMap<>();
+
         while (kidQueueInfoIterator.hasNext()) {
             Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> next = kidQueueInfoIterator.next();
             ConcurrentHashMap<String, QueueInfo> tempQueueInfoMap = next.getValue();
@@ -397,24 +386,41 @@ public class ClusterManagerController {
                 }
             }
 
-            // 不断更新 netty server
-            if (relatedNum > maxRelated) {
-                for (ServerInfo curServer : AdminServerCache.clusterInfo.get().getCurServers()) {
-                    if (curServer.getKid().equals(next.getKey())) {
-                        nettyServer = curServer;
-                    }
-                }
-                maxRelated = relatedNum;
-            }
-
-            if (maxRelated == mqEntity.getQueueInfoMap().size() && nettyServer != null) {
-                return nettyServer;
+            if (relatedNum >= maxRelated) {
+                queueRelatedMap.put(next.getKey(), relatedNum);
+                maxRelated = Math.max(relatedNum, maxRelated);
             }
         }
 
-        if (nettyServer != null) {
-            return nettyServer;
+        // 添加所有的 所有符合条件的 netty server info
+        Iterator<Map.Entry<String, Integer>> iterator = queueRelatedMap.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Integer> next = iterator.next();
+            String kid = next.getKey();
+            Integer relatedNum = next.getValue();
+            if (relatedNum >= maxRelated) {
+                nettyServers.add(AdminServerCache.kidServerMap.get(kid));
+            }
         }
+
+        // 匹配最新的 server
+        Map<String, String> queueLatestKid = AdminServerCache.clusterInfo.get().getQueueLatestKid();
+        Iterator<Map.Entry<String, String>> entryIterator = queueLatestKid.entrySet().iterator();
+        Map<String, Integer> recordMap = new HashMap<>();
+        while (entryIterator.hasNext()) {
+            Map.Entry<String, String> next = entryIterator.next();
+            String kid = next.getValue();
+            recordMap.put(kid, recordMap.getOrDefault(kid, 0) + 1);
+        }
+
+        List<Map.Entry<String, Integer>> recordList = new ArrayList<>(recordMap.entrySet());
+        recordList.sort((o1, o2) -> o2.getValue().compareTo(o1.getValue()));
+
+        if (!recordList.isEmpty() && !StringUtils.isBlank(recordList.get(0).getKey())) {
+            String key = recordList.get(0).getKey();
+            return AdminServerCache.kidServerMap.get(key);
+        }
+
         // 如果 server 不包含 consumer 注册的队列，那么就给定一个随机的 netty server
         return getRandomNettyServer();
     }

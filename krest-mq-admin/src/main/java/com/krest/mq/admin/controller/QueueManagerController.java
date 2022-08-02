@@ -60,25 +60,25 @@ public class QueueManagerController {
      */
     @GetMapping("get/base/queue/info")
     public Map<String, QueueInfo> getQueueInfo() {
-
-            // 遍历当前 server 的 queue info map ， 同时为其添加 kid 信息
-            for (Map.Entry<String, QueueInfo> entry : BrokerLocalCache.queueInfoMap.entrySet()) {
-                if (StringUtils.isBlank(entry.getValue().getKid())) {
-                    entry.getValue().setKid(AdminServerCache.kid);
-                }
-
-                // 更新 offset size
-                QueueInfo queueInfo = entry.getValue();
-                if (queueInfo.getType().equals(QueueType.DELAY)) {
-                    DelayQueue<DelayMessage> delayQueue = BrokerLocalCache.delayQueueMap.get(queueInfo.getName());
-                    queueInfo.setAmount(null == delayQueue ? -1 : delayQueue.size());
-                } else {
-                    BlockingDeque<MQMessage.MQEntity> blockingDeque = BrokerLocalCache.queueMap.get(queueInfo.getName());
-                    queueInfo.setAmount(null == blockingDeque ? -1 : blockingDeque.size());
-                }
-                entry.setValue(queueInfo);
+        // 遍历当前 server 的 queue info map ， 同时为其添加 kid 信息
+        for (Map.Entry<String, QueueInfo> entry : BrokerLocalCache.queueInfoMap.entrySet()) {
+            if (StringUtils.isBlank(entry.getValue().getKid())) {
+                entry.getValue().setKid(AdminServerCache.kid);
             }
-            return BrokerLocalCache.queueInfoMap;
+            // 更新 size
+            // 更新 offset
+            QueueInfo queueInfo = entry.getValue();
+            if (queueInfo.getType().equals(QueueType.DELAY)) {
+                DelayQueue<DelayMessage> delayQueue = BrokerLocalCache.delayQueueMap.get(queueInfo.getName());
+                queueInfo.setAmount(null == delayQueue ? -1 : delayQueue.size());
+            } else {
+                BlockingDeque<MQMessage.MQEntity> blockingDeque = BrokerLocalCache.queueMap.get(queueInfo.getName());
+                queueInfo.setAmount(null == blockingDeque ? -1 : blockingDeque.size());
+            }
+
+            entry.setValue(queueInfo);
+        }
+        return BrokerLocalCache.queueInfoMap;
     }
 
     @GetMapping("sync/data")

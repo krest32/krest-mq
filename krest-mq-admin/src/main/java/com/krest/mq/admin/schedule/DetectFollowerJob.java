@@ -22,7 +22,9 @@ public class DetectFollowerJob {
     @Scheduled(cron = "0/30 * * * * ?")
     public void detectFollower() {
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
-            if (AdminServerCache.isDetectFollower || AdminServerCache.isSelectServer) {
+            if (AdminServerCache.isDetectFollower
+                    || AdminServerCache.isSelectServer
+                    || AdminServerCache.isSyncClusterInfo) {
                 return;
             }
             AdminServerCache.isDetectFollower = true;
