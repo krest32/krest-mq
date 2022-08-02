@@ -58,25 +58,25 @@ public class ClusterManagerController {
     @PostMapping("get/leader/info")
     public ServerInfo getLeaderInfo() {
         // 判断当前的 server 是否在非正常状态
-        if (!AdminServerCache.clusterRole.equals(ClusterRole.Observer)) {
-            // 反向检测 leader 是否存活，
-            if (AdminServerCache.leaderInfo != null) {
-                boolean flag = ClusterUtil.detectLeader(
-                        AdminServerCache.leaderInfo.getTargetAddress(), AdminServerCache.leaderInfo);
-                if (!flag) {
-                    synchronized (this) {
-                        if (!AdminServerCache.isSelectServer) {
-                            log.info("无法链接 leader, 开始重新选举 Leader");
-                            ClusterUtil.initData();
-                            LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(SyncDataUtil.mqConfig));
-                        }
-                    }
-                } else {
-                    return AdminServerCache.leaderInfo;
-                }
-            }
+        if (AdminServerCache.clusterRole.equals(ClusterRole.Observer)
+                || null == AdminServerCache.clusterInfo) {
+            return null;
         }
-        return null;
+        // 反向检测 leader 是否存活，
+        boolean flag = ClusterUtil.detectLeader(AdminServerCache.leaderInfo.getTargetAddress(), AdminServerCache.leaderInfo);
+
+        // leader 存活，就返回 leader 信息
+        if (flag) {
+            return AdminServerCache.leaderInfo;
+        }else{
+            // leader 现在不存活
+            if (!AdminServerCache.isSelectServer) {
+                log.info("无法链接 leader, 开始重新选举 Leader");
+                ClusterUtil.initData();
+                LocalExecutor.NormalUseExecutor.execute(new SearchLeaderRunnable(SyncDataUtil.mqConfig));
+            }
+            return null;
+        }
     }
 
     @PostMapping("change/kid/status")
@@ -136,17 +136,12 @@ public class ClusterManagerController {
      */
     @PostMapping("get/netty/server/info")
     public ServerInfo getServerInfo(@RequestBody String reqStr) throws InvalidProtocolBufferException {
-        // 检测活着的 follower
-        detectFollowerJob.detectFollower();
-
-        MQMessage.MQEntity.Builder tempBuilder = MQMessage.MQEntity.newBuilder();
-        JsonFormat.parser().merge(reqStr, tempBuilder);
-        MQMessage.MQEntity mqEntity = tempBuilder.build();
-
         // 如果是Leader，那么就直接返回一个 MQ server 地址
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
-            ServerInfo nettyServer = getNettyServer(mqEntity);
-            return nettyServer;
+            MQMessage.MQEntity.Builder tempBuilder = MQMessage.MQEntity.newBuilder();
+            JsonFormat.parser().merge(reqStr, tempBuilder);
+            MQMessage.MQEntity mqEntity = tempBuilder.build();
+            return getNettyServer(mqEntity);
         }
 
         // 如果是 follower，同样请求 Leader 完成
@@ -324,12 +319,11 @@ public class ClusterManagerController {
         if (StringUtils.isBlank(responseStr)) {
             return JSONObject.parseObject(responseStr, ServerInfo.class);
         }
-
         return null;
     }
 
-
     private void sendData(String targetHost, Integer port, QueueInfo queueInfo, Integer type) {
+
         MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
                 .setId(String.valueOf(AdminServerCache.clusterInfo.get().getQueueOffsetMap().get(queueInfo.getName())))
                 .setDateTime(DateUtils.getNowDate())

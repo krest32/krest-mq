@@ -67,42 +67,43 @@ public class MsgResolver {
         ProtocolStringList queueNames = mqEntity.getQueueList();
         if (!queueNames.isEmpty()) {
             for (String queueName : queueNames) {
+                if (MQNormalConfig.defaultAckQueue.equals(queueName)) {
+                    log.info("收到注册消息");
+                    continue;
+                }
                 // 判断内存中是否存在该队列
                 if (null == BrokerLocalCache.queueInfoMap.get(queueName)) {
                     log.info("{}, msg queue does not exist!", queueName);
-                } else {
-                    if (MQNormalConfig.defaultAckQueue.equals(queueName)) {
-                        continue;
+                    continue;
+                }
+
+                try {
+                    QueueInfo queueInfo = BrokerLocalCache.queueInfoMap.get(queueName);
+                    // 只有是持久化的队列才会持久化信息
+                    if (queueInfo == null || queueInfo.getType() == null) {
+                        log.error("未知的 queue 或者 queue type");
                     } else {
-                        try {
-                            QueueInfo queueInfo = BrokerLocalCache.queueInfoMap.get(queueName);
-                            // 只有是持久化的队列才会持久化信息
-                            if (queueInfo == null || queueInfo.getType() == null) {
-                                log.error("未知的 queue 或者 queue type");
+                        if (queueInfo.getType().equals(QueueType.TEMPORARY)) {
+                            BrokerLocalCache.queueMap.get(queueName).put(mqEntity);
+                        } else {
+
+                            String print = JsonFormat.printer().print(mqEntity);
+                            KrestFileHandler.saveData(CacheFileConfig.queueCacheDatePath + queueName,
+                                    mqEntity.getId(),
+                                    JSONObject.toJSONString(print));
+
+                            if (queueInfo.getType().equals(QueueType.DELAY)) {
+                                BrokerLocalCache.delayQueueMap.get(queueName).put(
+                                        new DelayMessage(mqEntity.getTimeout(), mqEntity));
                             } else {
-                                if (queueInfo.getType().equals(QueueType.TEMPORARY)) {
-                                    BrokerLocalCache.queueMap.get(queueName).put(mqEntity);
-                                } else {
-
-                                    String print = JsonFormat.printer().print(mqEntity);
-                                    KrestFileHandler.saveData(CacheFileConfig.queueCacheDatePath + queueName,
-                                            mqEntity.getId(),
-                                            JSONObject.toJSONString(print));
-
-                                    if (queueInfo.getType().equals(QueueType.DELAY)) {
-                                        BrokerLocalCache.delayQueueMap.get(queueName).put(
-                                                new DelayMessage(mqEntity.getTimeout(), mqEntity));
-                                    } else {
-                                        BrokerLocalCache.queueMap.get(queueName).put(mqEntity);
-                                    }
-                                }
+                                BrokerLocalCache.queueMap.get(queueName).put(mqEntity);
                             }
-                        } catch (InvalidProtocolBufferException e) {
-                            log.error(e.getMessage());
-                        } catch (InterruptedException e) {
-                            log.error(e.getMessage());
                         }
                     }
+                } catch (InvalidProtocolBufferException e) {
+                    log.error(e.getMessage());
+                } catch (InterruptedException e) {
+                    log.error(e.getMessage());
                 }
             }
         }

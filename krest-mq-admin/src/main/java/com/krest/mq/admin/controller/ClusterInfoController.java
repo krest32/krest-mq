@@ -53,8 +53,12 @@ public class ClusterInfoController {
     public ClusterInfo getClusterInfo() {
         if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
             SyncDataUtil.syncClusterInfo();
+            return AdminServerCache.clusterInfo.get();
+        } else {
+            String requestLeaderForClusterInfoUrl = "http://" + AdminServerCache.leaderInfo.getTargetAddress() + "/mq/server/cluster/info";
+            MqRequest request = new MqRequest(requestLeaderForClusterInfoUrl, null);
+            return HttpUtil.getClusterInfo(request);
         }
-        return AdminServerCache.clusterInfo.get();
     }
 
 

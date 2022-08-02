@@ -31,8 +31,9 @@ public class SearchLeaderRunnable implements Runnable {
 
     @Override
     public void run() {
-        if (AdminServerCache.isSelectServer)
+        if (AdminServerCache.isSelectServer) {
             return;
+        }
 
         AdminServerCache.isSelectServer = true;
         searchLeader();

@@ -22,7 +22,7 @@ public class MQUtils {
                 return null;
             }
         } catch (Exception exception) {
-            log.info("Connect to [" + host + ":" + port + "] failed.");
+            log.error("Connect to [" + host + ":" + port + "] failed.");
             return null;
         }
     }
