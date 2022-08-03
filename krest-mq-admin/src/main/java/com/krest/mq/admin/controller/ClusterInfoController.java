@@ -32,7 +32,7 @@ public class ClusterInfoController {
 
     @GetMapping("cur/servers")
     public Set<ServerInfo> getCurServices() {
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER)) {
             return AdminServerCache.clusterInfo.get().getCurServers();
         }
         return null;
@@ -51,7 +51,7 @@ public class ClusterInfoController {
      */
     @GetMapping("cluster/info")
     public ClusterInfo getClusterInfo() {
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER)) {
             SyncDataUtil.syncClusterInfo();
             return AdminServerCache.clusterInfo.get();
         } else {
@@ -77,7 +77,7 @@ public class ClusterInfoController {
     @PostMapping("register")
     public ServerInfo register(@RequestBody ServerInfo serverInfo) {
         // 如果正在选择 Leader, 那么就进入等到状态
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER)) {
             log.info("receive service register : " + serverInfo.getTargetAddress());
             // 添加当前 leader的服务中
             AdminServerCache.clusterInfo.get().getCurServers().add(serverInfo);
@@ -92,7 +92,7 @@ public class ClusterInfoController {
      */
     @PostMapping("check/leader")
     public String checkLeader(@RequestBody ServerInfo serverInfo) {
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader) && AdminServerCache.clusterInfo.get().getCurServers().add(serverInfo)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER) && AdminServerCache.clusterInfo.get().getCurServers().add(serverInfo)) {
             log.info("receive be lost register : " + serverInfo);
 
         }

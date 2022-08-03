@@ -47,7 +47,7 @@ public class SearchLeaderRunnable implements Runnable {
     private void searchLeader() {
 
         // 如果自己就是Leader 那么就不需要寻找
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER)) {
             return;
         }
 
@@ -61,9 +61,9 @@ public class SearchLeaderRunnable implements Runnable {
             // 探测失败
             if (!flag) {
                 AdminServerCache.leaderInfo = null;
-                AdminServerCache.clusterRole = ClusterRole.Observer;
+                AdminServerCache.clusterRole = ClusterRole.OBSERVER;
             } else {
-                AdminServerCache.clusterRole = ClusterRole.Follower;
+                AdminServerCache.clusterRole = ClusterRole.FOLLOWER;
                 log.info("leader info : {} ", AdminServerCache.leaderInfo);
                 return;
             }
@@ -104,13 +104,13 @@ public class SearchLeaderRunnable implements Runnable {
                 // 探测失败
                 if (!flag) {
                     AdminServerCache.leaderInfo = null;
-                    AdminServerCache.clusterRole = ClusterRole.Observer;
+                    AdminServerCache.clusterRole = ClusterRole.OBSERVER;
                 } else {
                     log.info("get leader info from : {}, leader is : {}  ", curServerInfo.getTargetAddress(), tempServer.getTargetAddress());
                     boolean isLeaderOK = ClusterUtil.detectLeader(tempServer.getTargetAddress(), AdminServerCache.selfServerInfo);
                     if (isLeaderOK) {
                         AdminServerCache.leaderInfo = tempServer;
-                        AdminServerCache.clusterRole = ClusterRole.Follower;
+                        AdminServerCache.clusterRole = ClusterRole.FOLLOWER;
                         return;
                     } else {
                         log.info("can not connect to : {} ", tempServer.getTargetAddress());
@@ -126,7 +126,7 @@ public class SearchLeaderRunnable implements Runnable {
     private synchronized void selectLeader() {
         // 如果没有站到 leader， 就需要进入到选举 leader 的模式
         if (null == AdminServerCache.leaderInfo
-                || AdminServerCache.clusterRole.equals(ClusterRole.Observer)) {
+                || AdminServerCache.clusterRole.equals(ClusterRole.OBSERVER)) {
 
             log.info("start select leader...");
             // 转化为 list, 同时根据 kid 降序排序
@@ -153,9 +153,9 @@ public class SearchLeaderRunnable implements Runnable {
                 }
             }
             if (AdminServerCache.selectedServer.getKid().equals(AdminServerCache.kid)) {
-                AdminServerCache.clusterRole = ClusterRole.Leader;
+                AdminServerCache.clusterRole = ClusterRole.LEADER;
             } else {
-                AdminServerCache.clusterRole = ClusterRole.Follower;
+                AdminServerCache.clusterRole = ClusterRole.FOLLOWER;
             }
             AdminServerCache.leaderInfo = AdminServerCache.selectedServer;
             log.info("select leader success, leader info : " + AdminServerCache.leaderInfo.getTargetAddress());
@@ -163,7 +163,7 @@ public class SearchLeaderRunnable implements Runnable {
 
 
             // 选举结束通知其他 server
-            if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+            if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER)) {
                 Iterator<Map.Entry<String, ServerInfo>> iterator = AdminServerCache.getSelectServerList().iterator();
                 while (iterator.hasNext()) {
                     Map.Entry<String, ServerInfo> next = iterator.next();

@@ -53,6 +53,6 @@ public class ClusterUtil {
         AdminServerCache.clusterInfo.get().getQueueAmountMap().clear();
         AdminServerCache.clusterInfo.get().getQueueSizeMap().clear();
         AdminServerCache.clusterInfo.get().getQueueOffsetMap().clear();
-        AdminServerCache.clusterRole = ClusterRole.Observer;
+        AdminServerCache.clusterRole = ClusterRole.OBSERVER;
     }
 }

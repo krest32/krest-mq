@@ -28,7 +28,7 @@ public class DetectLeaderJob {
             return;
         }
         // 如果 server 本身是 leader， 或者正在选举 leader 中，则返回
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader) || AdminServerCache.isSelectServer) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER) || AdminServerCache.isSelectServer) {
             return;
         }
 

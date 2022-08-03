@@ -1,7 +1,6 @@
 package com.krest.mq.admin.schedule;
 
 import com.krest.mq.admin.util.ClusterUtil;
-import com.krest.mq.admin.util.SyncDataUtil;
 import com.krest.mq.core.cache.AdminServerCache;
 import com.krest.mq.core.enums.ClusterRole;
 import com.krest.mq.core.entity.ServerInfo;
@@ -21,7 +20,7 @@ public class DetectFollowerJob {
     @Async("asyncPool")
     @Scheduled(cron = "0/30 * * * * ?")
     public void detectFollower() {
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER)) {
             if (AdminServerCache.isDetectFollower
                     || AdminServerCache.isSelectServer
                     || AdminServerCache.isSyncClusterInfo) {

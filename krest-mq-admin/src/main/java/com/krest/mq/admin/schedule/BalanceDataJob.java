@@ -19,7 +19,7 @@ public class BalanceDataJob {
     @Async("asyncPool")
     @Scheduled(cron = "0/30 * * * * ?")
     public void reBalanceQueue() {
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER)) {
 
             if (AdminServerCache.isSelectServer
                     || AdminServerCache.isKidBalanced

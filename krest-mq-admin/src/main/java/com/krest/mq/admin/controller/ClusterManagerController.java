@@ -20,7 +20,6 @@ import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.core.exeutor.LocalExecutor;
 import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.HttpUtil;
-import com.krest.mq.core.utils.SyncUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,7 +57,8 @@ public class ClusterManagerController {
     @PostMapping("get/leader/info")
     public ServerInfo getLeaderInfo() {
         // 判断当前的 server 是否在非正常状态
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Observer)
+        if (AdminServerCache.clusterRole.equals(ClusterRole.OBSERVER)
+                || AdminServerCache.clusterRole.equals(ClusterRole.LOOKING)
                 || null == AdminServerCache.clusterInfo) {
             return null;
         }
@@ -103,7 +103,7 @@ public class ClusterManagerController {
 
     @PostMapping("notify/leader/sync/data/finish")
     public String notifyLeaderSyncDataFinish(@RequestBody String kid) {
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER)) {
             AdminServerCache.clusterInfo.get().getKidStatusMap().put(kid, 1);
             return "1";
         }
@@ -137,7 +137,7 @@ public class ClusterManagerController {
     @PostMapping("get/netty/server/info")
     public ServerInfo getServerInfo(@RequestBody String reqStr) throws InvalidProtocolBufferException {
         // 如果是Leader，那么就直接返回一个 MQ server 地址
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER)) {
             MQMessage.MQEntity.Builder tempBuilder = MQMessage.MQEntity.newBuilder();
             JsonFormat.parser().merge(reqStr, tempBuilder);
             MQMessage.MQEntity mqEntity = tempBuilder.build();
@@ -145,7 +145,7 @@ public class ClusterManagerController {
         }
 
         // 如果是 follower，同样请求 Leader 完成
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Follower)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.FOLLOWER)) {
             return requestLeader(reqStr);
         }
 
