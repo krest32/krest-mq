@@ -1,13 +1,10 @@
 package com.krest.mq.admin.util;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.krest.mq.admin.properties.MqConfig;
 import com.krest.mq.core.cache.AdminServerCache;
-import com.krest.mq.core.cache.BrokerLocalCache;
 import com.krest.mq.core.entity.*;
 import com.krest.mq.core.enums.ClusterRole;
-import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.core.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -33,7 +30,7 @@ public class SyncDataUtil {
      */
     public synchronized static void syncClusterInfo() {
 
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER)) {
 
             if (AdminServerCache.isSyncClusterInfo) {
                 log.info("still in sync cluster info, please wait next run schedule job");

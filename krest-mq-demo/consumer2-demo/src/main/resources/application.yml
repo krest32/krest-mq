@@ -19,8 +19,8 @@ krest:
       - localhost:9003
     # 将要发消息的队列
     queue:
-      - demo
-      - demo1
-      - demo2
+#      - demo
+#      - demo1
+#      - demo2
 #      - demo3
-#      - demo4
+      - demo4

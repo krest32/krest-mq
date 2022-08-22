@@ -20,7 +20,6 @@ import com.krest.mq.core.enums.QueueType;
 import com.krest.mq.core.exeutor.LocalExecutor;
 import com.krest.mq.core.utils.DateUtils;
 import com.krest.mq.core.utils.HttpUtil;
-import com.krest.mq.core.utils.SyncUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,7 +57,8 @@ public class ClusterManagerController {
     @PostMapping("get/leader/info")
     public ServerInfo getLeaderInfo() {
         // 判断当前的 server 是否在非正常状态
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Observer)
+        if (AdminServerCache.clusterRole.equals(ClusterRole.OBSERVER)
+                || AdminServerCache.clusterRole.equals(ClusterRole.LOOKING)
                 || null == AdminServerCache.clusterInfo) {
             return null;
         }
@@ -68,7 +68,7 @@ public class ClusterManagerController {
         // leader 存活，就返回 leader 信息
         if (flag) {
             return AdminServerCache.leaderInfo;
-        }else{
+        } else {
             // leader 现在不存活
             if (!AdminServerCache.isSelectServer) {
                 log.info("无法链接 leader, 开始重新选举 Leader");
@@ -103,7 +103,7 @@ public class ClusterManagerController {
 
     @PostMapping("notify/leader/sync/data/finish")
     public String notifyLeaderSyncDataFinish(@RequestBody String kid) {
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER)) {
             AdminServerCache.clusterInfo.get().getKidStatusMap().put(kid, 1);
             return "1";
         }
@@ -137,7 +137,7 @@ public class ClusterManagerController {
     @PostMapping("get/netty/server/info")
     public ServerInfo getServerInfo(@RequestBody String reqStr) throws InvalidProtocolBufferException {
         // 如果是Leader，那么就直接返回一个 MQ server 地址
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Leader)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.LEADER)) {
             MQMessage.MQEntity.Builder tempBuilder = MQMessage.MQEntity.newBuilder();
             JsonFormat.parser().merge(reqStr, tempBuilder);
             MQMessage.MQEntity mqEntity = tempBuilder.build();
@@ -145,7 +145,7 @@ public class ClusterManagerController {
         }
 
         // 如果是 follower，同样请求 Leader 完成
-        if (AdminServerCache.clusterRole.equals(ClusterRole.Follower)) {
+        if (AdminServerCache.clusterRole.equals(ClusterRole.FOLLOWER)) {
             return requestLeader(reqStr);
         }
 
@@ -323,7 +323,6 @@ public class ClusterManagerController {
     }
 
     private void sendData(String targetHost, Integer port, QueueInfo queueInfo, Integer type) {
-
         MQMessage.MQEntity mqEntity = MQMessage.MQEntity.newBuilder()
                 .setId(String.valueOf(AdminServerCache.clusterInfo.get().getQueueOffsetMap().get(queueInfo.getName())))
                 .setDateTime(DateUtils.getNowDate())
@@ -415,13 +414,30 @@ public class ClusterManagerController {
             return AdminServerCache.kidServerMap.get(key);
         }
 
-        // 如果 server 不包含 consumer 注册的队列，那么就给定一个随机的 netty server
-        return getRandomNettyServer();
+        return emptyServer();
     }
 
-    private ServerInfo getRandomNettyServer() {
-        List<ServerInfo> ans = new ArrayList<>(AdminServerCache.clusterInfo.get().getCurServers());
-        return ans.get(new Random().nextInt(ans.size()));
+    private ServerInfo emptyServer() {
+        Map<String, ConcurrentHashMap<String, QueueInfo>> kidQueueInfo = AdminServerCache.clusterInfo.get().getKidQueueInfo();
+        Map<String, Integer> kidMsgCountMap = new HashMap<>();
+        Iterator<Map.Entry<String, ConcurrentHashMap<String, QueueInfo>>> iterator = kidQueueInfo.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, ConcurrentHashMap<String, QueueInfo>> next = iterator.next();
+            ConcurrentHashMap<String, QueueInfo> value = next.getValue();
+            String curKid = next.getKey();
+            Iterator<Map.Entry<String, QueueInfo>> entryIterator = value.entrySet().iterator();
+            int count = 0;
+            while (entryIterator.hasNext()) {
+                QueueInfo queueInfo = entryIterator.next().getValue();
+                count += queueInfo.getAmount() == null ? 0 : queueInfo.getAmount();
+            }
+            kidMsgCountMap.put(curKid, count);
+        }
+        List<Map.Entry<String, Integer>> ansList = new ArrayList<>(kidMsgCountMap.entrySet());
+        ansList.sort((o1, o2) -> o1.getValue().compareTo(o2.getValue()));
+        if (!ansList.isEmpty()) {
+            return AdminServerCache.kidServerMap.get(ansList.get(0));
+        }
+        return AdminServerCache.selfServerInfo;
     }
-
 }

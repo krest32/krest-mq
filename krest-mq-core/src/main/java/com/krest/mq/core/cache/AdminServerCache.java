@@ -37,7 +37,7 @@ public class AdminServerCache {
     public static boolean isSyncData = false;
 
     // 默认 server 的状态为 observer （观察者）
-    public static ClusterRole clusterRole = ClusterRole.Observer;
+    public static ClusterRole clusterRole = ClusterRole.OBSERVER;
 
 
     // 配置信息中的 kid 与 cluster server 的对应关系
